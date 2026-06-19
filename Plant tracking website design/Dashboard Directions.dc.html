@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; }
+  @keyframes pulse { 0%,100% { opacity: 1; transform: scale(1);} 50% { opacity: .45; transform: scale(.82);} }
+  @keyframes floaty { 0%,100% { transform: translateY(0);} 50% { transform: translateY(-3px);} }
+  .pix { image-rendering: pixelated; image-rendering: crisp-edges; }
+</style>
+</helmet>
+<div style="width:max-content;min-width:100%;min-height:100vh;box-sizing:border-box;padding:48px;background:#e7e5df;font-family:'Hanken Grotesk',sans-serif">
+
+  <div style="margin-bottom:36px;max-width:760px">
+    <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#8a8a7e;margin-bottom:14px">Plant Tracker · Dashboard explorations</div>
+    <div style="font-family:'Newsreader',serif;font-size:34px;line-height:1.15;color:#1b211c;letter-spacing:-.01em">Three directions for the main screen.</div>
+    <div style="font-size:15px;line-height:1.6;color:#5f655c;margin-top:14px">Same soft off-white + forest-green system, same pixel-art plant sprites — three layouts. <span style="color:#1e3d2f;font-weight:600">A</span> is a calm editorial grid, <span style="color:#1e3d2f;font-weight:600">B</span> a tactile roster with watering meters, <span style="color:#1e3d2f;font-weight:600">C</span> a spatial shelf with a hero "needs water" focal. Tell me which to build out (mix & match welcome).</div>
+  </div>
+
+  <div style="display:flex;gap:48px;align-items:flex-start">
+
+    <!-- DIRECTION A -->
+    <div style="flex:none;width:1120px">
+      <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12px;letter-spacing:.06em;color:#5f655c;margin-bottom:12px">A · Editorial grid</div>
+      <div style="background:#f3f1e9;border-radius:26px;box-shadow:0 8px 30px rgba(30,61,47,.10);overflow:hidden">
+        <div style="padding:40px 44px">
+          <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:34px">
+            <div>
+              <div style="font-family:ui-monospace,monospace;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#9aa093;margin-bottom:10px">Friday · June 19</div>
+              <div style="font-family:'Newsreader',serif;font-size:42px;line-height:1;color:#1b211c;letter-spacing:-.02em">My plants</div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:center;background:#fff;border:1px solid #e3e0d4;border-radius:999px;padding:9px 16px 9px 12px">
+              <span style="width:9px;height:9px;border-radius:50%;background:#b5613a;display:inline-block;animation:pulse 2s infinite"></span>
+              <span style="font-size:13px;font-weight:600;color:#1b211c">{{ needWater }} need water soon</span>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px">
+            <sc-for list="{{ plants }}" as="p" hint-placeholder-count="6">
+              <div style="background:#fbfaf5;border:1px solid #e6e3d7;border-radius:22px;overflow:hidden;transition:transform .4s cubic-bezier(.2,.8,.2,1),box-shadow .4s;box-shadow:0 1px 2px rgba(30,61,47,.05)" style-hover="transform:translateY(-5px);box-shadow:0 22px 44px rgba(30,61,47,.13)">
+                <div style="height:138px;background:#eef0e4;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden">
+                  <img class="pix" src="{{ p.iconUrl }}" alt="" style="width:108px;height:108px;animation:floaty 5s ease-in-out infinite">
+                  <span style="position:absolute;top:12px;right:12px;display:flex;align-items:center;gap:6px;background:#fff;border-radius:999px;padding:5px 11px 5px 9px;font-size:11px;font-weight:600;color:{{ p.statusColor }};box-shadow:0 2px 8px rgba(30,61,47,.08)"><span style="width:7px;height:7px;border-radius:50%;background:{{ p.statusColor }};display:inline-block"></span>{{ p.statusLabel }}</span>
+                </div>
+                <div style="padding:18px 20px 20px">
+                  <div style="font-family:'Newsreader',serif;font-size:21px;color:#1b211c;line-height:1.1">{{ p.name }}</div>
+                  <div style="font-family:'Newsreader',serif;font-style:italic;font-size:13px;color:#9aa093;margin-top:3px">{{ p.latin }}</div>
+                  <div style="height:1px;background:#ece9dd;margin:14px 0"></div>
+                  <div style="display:flex;justify-content:space-between;align-items:center">
+                    <div style="font-size:12px;color:#6b736a">{{ p.light }}</div>
+                    <div style="font-size:12px;color:#6b736a">{{ p.freq }}</div>
+                  </div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DIRECTION B -->
+    <div style="flex:none;width:860px">
+      <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12px;letter-spacing:.06em;color:#5f655c;margin-bottom:12px">B · Tactile roster</div>
+      <div style="background:#f3f1e9;border-radius:26px;box-shadow:0 8px 30px rgba(30,61,47,.10);overflow:hidden">
+        <div style="padding:40px 44px">
+          <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:30px">
+            <div>
+              <div style="font-family:ui-monospace,monospace;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#9aa093;margin-bottom:10px">Friday · June 19</div>
+              <div style="font-family:'Newsreader',serif;font-size:42px;line-height:1;color:#1b211c;letter-spacing:-.02em">My plants</div>
+            </div>
+            <div style="text-align:right;font-size:13px;color:#6b736a">{{ totalCount }} plants<br><span style="color:#b5613a;font-weight:600">{{ needWater }} thirsty</span></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <sc-for list="{{ plants }}" as="p" hint-placeholder-count="6">
+              <div style="display:flex;align-items:center;gap:22px;background:#fbfaf5;border:1px solid #e6e3d7;border-radius:20px;padding:16px 22px;transition:transform .35s cubic-bezier(.2,.8,.2,1),box-shadow .35s" style-hover="transform:translateX(4px);box-shadow:-6px 12px 30px rgba(30,61,47,.10)">
+                <div style="flex:none;width:72px;height:72px;border-radius:16px;background:#eef0e4;display:flex;align-items:center;justify-content:center;overflow:hidden">
+                  <img class="pix" src="{{ p.iconUrl }}" alt="" style="width:60px;height:60px">
+                </div>
+                <div style="flex:none;width:188px">
+                  <div style="font-family:'Newsreader',serif;font-size:22px;color:#1b211c;line-height:1.05">{{ p.name }}</div>
+                  <div style="font-family:'Newsreader',serif;font-style:italic;font-size:13px;color:#9aa093;margin-top:2px">{{ p.common }}</div>
+                  <div style="font-size:11.5px;color:#8a907f;margin-top:8px;font-family:ui-monospace,monospace;letter-spacing:.02em">{{ p.light }}</div>
+                </div>
+                <div style="flex:1;min-width:0">
+                  <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
+                    <span style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#9aa093;font-family:ui-monospace,monospace">Watering cycle</span>
+                    <span style="font-size:12px;color:#6b736a">{{ p.freq }}</span>
+                  </div>
+                  <div style="height:9px;border-radius:999px;background:#e9e6d9;overflow:hidden;position:relative">
+                    <div style="height:100%;border-radius:999px;width:{{ p.progress }}%;background:{{ p.statusColor }};transition:width .8s cubic-bezier(.2,.8,.2,1)"></div>
+                  </div>
+                  <div style="font-size:11.5px;color:#8a907f;margin-top:8px">Last watered {{ p.lastWatered }}</div>
+                </div>
+                <div style="flex:none;width:104px;text-align:right;display:flex;flex-direction:column;align-items:flex-end">
+                  <div style="display:flex;align-items:baseline;gap:4px;color:{{ p.statusColor }}">
+                    <span style="font-family:'Newsreader',serif;font-size:44px;line-height:.9">{{ p.bigNum }}</span>
+                  </div>
+                  <div style="font-size:11px;color:#8a907f;text-transform:uppercase;letter-spacing:.08em;font-family:ui-monospace,monospace;margin-top:4px">{{ p.bigSub }}</div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DIRECTION C -->
+    <div style="flex:none;width:1180px">
+      <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12px;letter-spacing:.06em;color:#5f655c;margin-bottom:12px">C · Spatial shelf</div>
+      <div style="background:#f3f1e9;border-radius:26px;box-shadow:0 8px 30px rgba(30,61,47,.10);overflow:hidden">
+        <div style="padding:40px 44px 30px">
+          <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:28px">
+            <div>
+              <div style="font-family:ui-monospace,monospace;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#9aa093;margin-bottom:10px">Friday · June 19 · good morning</div>
+              <div style="font-family:'Newsreader',serif;font-size:42px;line-height:1;color:#1b211c;letter-spacing:-.02em">The windowsill</div>
+            </div>
+          </div>
+
+          <!-- HERO -->
+          <div style="display:flex;background:#1e3d2f;border-radius:24px;overflow:hidden;margin-bottom:42px;min-height:248px">
+            <div style="flex:1;padding:34px 38px;color:#eef0e4;display:flex;flex-direction:column;justify-content:center">
+              <div style="display:flex;align-items:center;gap:8px;font-family:ui-monospace,monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#b6cf90;margin-bottom:16px"><span style="width:8px;height:8px;border-radius:50%;background:#d98a5b;display:inline-block;animation:pulse 1.8s infinite"></span>Needs water now</div>
+              <div style="font-family:'Newsreader',serif;font-size:40px;line-height:1.02;letter-spacing:-.01em">{{ hero.name }}</div>
+              <div style="font-family:'Newsreader',serif;font-style:italic;font-size:16px;color:#9bb98a;margin-top:4px">{{ hero.latin }} · {{ hero.loc }}</div>
+              <div style="display:flex;align-items:baseline;gap:10px;margin-top:22px">
+                <span style="font-family:'Newsreader',serif;font-size:72px;line-height:.8">{{ hero.daysAbs }}</span>
+                <span style="font-size:14px;color:#9bb98a;max-width:90px;line-height:1.2">{{ hero.bigSub }}</span>
+              </div>
+              <div style="margin-top:24px"><span style="display:inline-flex;align-items:center;gap:8px;background:#eef0e4;color:#1e3d2f;font-weight:600;font-size:14px;padding:12px 22px;border-radius:999px;cursor:pointer;transition:transform .25s" style-hover="transform:scale(1.04)">💧 Water now</span></div>
+            </div>
+            <div style="flex:none;width:300px;background:#274a39;display:flex;align-items:center;justify-content:center">
+              <div style="width:180px;height:180px;border-radius:50%;background:#2f5743;display:flex;align-items:center;justify-content:center">
+                <img class="pix" src="{{ hero.iconUrl }}" alt="" style="width:140px;height:140px;animation:floaty 5s ease-in-out infinite">
+              </div>
+            </div>
+          </div>
+
+          <!-- SHELF -->
+          <div style="font-family:ui-monospace,monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#9aa093;margin-bottom:18px">Everyone else</div>
+          <div style="position:relative;padding-bottom:24px">
+            <div style="display:flex;gap:20px;align-items:flex-end">
+              <sc-for list="{{ rest }}" as="p" hint-placeholder-count="5">
+                <div style="flex:1;display:flex;flex-direction:column;align-items:center;cursor:pointer;transition:transform .35s cubic-bezier(.2,.8,.2,1)" style-hover="transform:translateY(-8px)">
+                  <span style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:{{ p.statusColor }};margin-bottom:8px"><span style="width:6px;height:6px;border-radius:50%;background:{{ p.statusColor }};display:inline-block"></span>{{ p.statusLabel }}</span>
+                  <div style="width:118px;height:118px;border-radius:18px;background:#fbfaf5;border:1px solid #e6e3d7;display:flex;align-items:center;justify-content:center;overflow:hidden">
+                    <img class="pix" src="{{ p.iconUrl }}" alt="" style="width:96px;height:96px">
+                  </div>
+                  <div style="font-family:'Newsreader',serif;font-size:18px;color:#1b211c;margin-top:12px;text-align:center;line-height:1.1">{{ p.name }}</div>
+                  <div style="font-size:11px;color:#9aa093;margin-top:2px;font-family:ui-monospace,monospace">{{ p.loc }}</div>
+                </div>
+              </sc-for>
+            </div>
+            <div style="height:10px;border-radius:6px;background:linear-gradient(#d8c19c,#c2a87c);box-shadow:0 8px 18px rgba(30,61,47,.12);margin-top:18px"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  buildIcon(map, pal) {
+    const cols = map[0].length, rows = map.length;
+    const c = document.createElement('canvas');
+    c.width = cols; c.height = rows;
+    const ctx = c.getContext('2d');
+    for (let y = 0; y < rows; y++) {
+      for (let x = 0; x < cols; x++) {
+        const ch = map[y][x];
+        if (ch === ' ' || !pal[ch]) continue;
+        ctx.fillStyle = pal[ch];
+        ctx.fillRect(x, y, 1, 1);
+      }
+    }
+    return c.toDataURL();
+  }
+
+  sprites() {
+    // 18 wide x 18 tall archetypes
+    const broad = [
+      "                  ",
+      "        DD        ",
+      "      DGLLD       ",
+      "  DD DGLLLGD DD   ",
+      " DGLD GLLLLG DLGD ",
+      " DLLLGGLLHLLGGLLD ",
+      " DLLLLLLLLLLLLLLD ",
+      "  DLLHLLLLLLHLLD  ",
+      "  DDLLLLLLLLLLDD  ",
+      "    DDGLLLLGDD    ",
+      "       DGGD       ",
+      "        SS        ",
+      "        SS        ",
+      "      rrTTrr      ",
+      "      TTTTTT      ",
+      "      tTTTTt      ",
+      "      ttTTtt      ",
+      "       tooo       ",
+    ];
+    const cane = [
+      "                  ",
+      "    D        D    ",
+      "   DLD      DLD   ",
+      "   DLLD    DLLD   ",
+      "    DLLD  DLLD    ",
+      "   D DLLDDLLD D   ",
+      "  DLD DLLLLD DLD  ",
+      "  DLLD DLLLD DLD  ",
+      "   DLLD DLD DLD   ",
+      "    DLLD S DLLD   ",
+      "     DLD S DLD    ",
+      "      D SS D      ",
+      "        SS        ",
+      "      rrTTrr      ",
+      "      TTTTTT      ",
+      "      tTTTTt      ",
+      "      ttTTtt      ",
+      "       tooo       ",
+    ];
+    const trail = [
+      "                  ",
+      "       DGGD       ",
+      "      DLHHLD      ",
+      "  DGD DLLLD DGD   ",
+      " DLHLD DGGD DLHLD ",
+      " DLLLD  SS  DLLLD ",
+      "  DGD   SS   DGD  ",
+      " DGD    SS    DGD ",
+      "DLHLD  rTTr  DLHLD",
+      "DLLLD  TTTT  DLLLD",
+      " DGD   TTTT   DGD ",
+      "       tTTt       ",
+      "  DGD  tttt  DGD  ",
+      " DLHLD      DLHLD ",
+      " DLLLD      DLLLD ",
+      "  DGD        DGD  ",
+      "                  ",
+      "                  ",
+    ];
+    const succ = [
+      "                  ",
+      "   DGD      DGD   ",
+      "  DLHGD    DGHLD  ",
+      "  DLLGD    DGLLD  ",
+      "   DGDD    DDGD   ",
+      "    D  DGGD  D    ",
+      "      DLHHLD      ",
+      "      DLLLLD      ",
+      "      DDGGDD      ",
+      "        SS        ",
+      "       DSSD       ",
+      "        SS        ",
+      "      rrTTrr      ",
+      "      TTTTTT      ",
+      "      TTTTTT      ",
+      "      tTTTTt      ",
+      "      ttTTtt      ",
+      "       tooo       ",
+    ];
+    const fan = [
+      "                  ",
+      "  D    DD    D    ",
+      "  LD  DLLD  DL    ",
+      "  LLD DLLD DLL    ",
+      "  LLLDDLLDDLLL    ",
+      "  LLLLGLLGLLLL    ",
+      "   LLLGLLGLLL     ",
+      "    LLGLLGLL      ",
+      "     LGLLGL       ",
+      "      GLLG        ",
+      "       SS         ",
+      "       SS         ",
+      "       SS         ",
+      "     rrTTrr       ",
+      "     TTTTTT       ",
+      "     tTTTTt       ",
+      "     ttTTtt       ",
+      "      tooo        ",
+    ];
+    return { broad, cane, trail, succ, fan };
+  }
+
+  palette(greens) {
+    return {
+      D: greens.D, G: greens.G, L: greens.L, H: greens.H, S: '#7a5c3a',
+      T: '#c8895b', t: '#ad6e44', r: '#dba87a', o: '#5b4636',
+    };
+  }
+
+  renderVals() {
+    const sp = this.sprites();
+    const greenSets = {
+      forest: { D: '#1c3a2c', G: '#3f6b4a', L: '#76995f', H: '#b6cf90' },
+      deep:   { D: '#173024', G: '#345a3f', L: '#5f8a53', H: '#9cc080' },
+      bright: { D: '#26452f', G: '#4a7a4f', L: '#86a85f', H: '#c3d893' },
+      jade:   { D: '#2a4636', G: '#4c7158', L: '#83a06f', H: '#bcd29a' },
+    };
+    const raw = [
+      { name: 'Monstera', loc: 'living room', latin: 'Monstera deliciosa', common: 'Swiss cheese plant', light: 'Bright indirect', freq: 'Every 7 days', lastWatered: '3 days ago', nextIn: 4, arch: 'broad', greens: 'forest', fact: 'The holes in its leaves — fenestrations — let light and rain reach the leaves below.' },
+      { name: 'Dracaena', loc: 'bedroom', latin: 'Dracaena fragrans', common: 'Corn plant', light: 'Low–medium', freq: 'Every 11 days', lastWatered: '9 days ago', nextIn: 2, arch: 'cane', greens: 'deep', fact: 'Nicknamed the corn plant for its thick cane stalks and long arching leaves.' },
+      { name: 'Monstera', loc: 'hallway', latin: 'Monstera deliciosa', common: 'Swiss cheese plant', light: 'Medium', freq: 'Every 7 days', lastWatered: '8 days ago', nextIn: -1, arch: 'broad', greens: 'bright', fact: 'In the wild it climbs trees, anchoring with thick aerial roots.' },
+      { name: 'Pothos', loc: 'shelf', latin: 'Epipremnum aureum', common: 'Devil’s ivy', light: 'Low light OK', freq: 'Every 7 days', lastWatered: '1 day ago', nextIn: 6, arch: 'trail', greens: 'forest', fact: 'Nearly unkillable — vines can grow over 12 metres long indoors.' },
+      { name: 'Jade', loc: 'windowsill', latin: 'Crassula ovata', common: 'Jade plant', light: 'Bright direct', freq: 'Every 21 days', lastWatered: '12 days ago', nextIn: 9, arch: 'succ', greens: 'jade', fact: 'A succulent that stores water in its plump leaves — a symbol of prosperity.' },
+      { name: 'Strelitzia', loc: 'corner', latin: 'Strelitzia reginae', common: 'Bird of paradise', light: 'Bright direct', freq: 'Every 7 days', lastWatered: '5 days ago', nextIn: 2, arch: 'fan', greens: 'bright', fact: 'Its flower mimics a tropical bird to lure sunbirds in to pollinate it.' },
+    ];
+    const enrich = (p) => {
+      let status, statusLabel, statusColor;
+      if (p.nextIn <= 0) { status = 'overdue'; statusLabel = p.nextIn === 0 ? 'Water today' : Math.abs(p.nextIn) + 'd overdue'; statusColor = '#b5613a'; }
+      else if (p.nextIn <= 2) { status = 'soon'; statusLabel = 'In ' + p.nextIn + 'd'; statusColor = '#b8862f'; }
+      else { status = 'happy'; statusLabel = 'Happy'; statusColor = '#3f6b4a'; }
+      const iconUrl = this.buildIcon(sp[p.arch], this.palette(greenSets[p.greens]));
+      const freqDays = parseInt((p.freq.match(/\d+/) || [7])[0], 10);
+      const sinceDays = parseInt((p.lastWatered.match(/\d+/) || [0])[0], 10);
+      const progress = Math.min(118, Math.round((sinceDays / freqDays) * 100));
+      const daysAbs = Math.abs(p.nextIn);
+      const overdue = p.nextIn <= 0;
+      const bigNum = overdue ? (p.nextIn === 0 ? 0 : daysAbs) : p.nextIn;
+      const bigSub = overdue ? (p.nextIn === 0 ? 'water today' : 'days overdue') : 'days to water';
+      return { ...p, status, statusLabel, statusColor, daysAbs, overdue, iconUrl, freqDays, sinceDays, progress, bigNum, bigSub };
+    };
+    const plants = raw.map(enrich);
+    const hero = plants.slice().sort((a, b) => a.nextIn - b.nextIn)[0];
+    const rest = plants.filter((p) => p !== hero);
+    const needWater = plants.filter((p) => p.nextIn <= 2).length;
+    return { plants, hero, rest, needWater, totalCount: plants.length };
+  }
+}
+</script>
+</body>
+</html>

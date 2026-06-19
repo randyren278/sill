@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #f3f1e9; }
+  @keyframes pulse { 0%,100% { opacity:1; transform:scale(1);} 50% { opacity:.4; transform:scale(.78);} }
+  @keyframes floaty { 0%,100% { transform:translateY(0);} 50% { transform:translateY(-4px);} }
+  @keyframes fadeUp { from { opacity:0; transform:translateY(14px);} to { opacity:1; transform:translateY(0);} }
+  @keyframes popIn { from { opacity:0; transform:scale(.92);} to { opacity:1; transform:scale(1);} }
+  .pix { image-rendering: pixelated; image-rendering: crisp-edges; }
+  input, select, button { font-family:'Hanken Grotesk',sans-serif; }
+  input:focus, select:focus { outline:none; border-color:#3f6b4a !important; box-shadow:0 0 0 3px rgba(63,107,74,.14); }
+  input[type=range] { accent-color:#3f6b4a; }
+  ::-webkit-scrollbar { width:10px; height:10px; }
+  ::-webkit-scrollbar-thumb { background:#dcd8c9; border-radius:6px; border:2px solid #f3f1e9; }
+</style>
+</helmet>
+<div style="min-height:100vh;background:#f3f1e9;color:#1b211c;font-family:'Hanken Grotesk',sans-serif;-webkit-font-smoothing:antialiased">
+  <div style="max-width:1060px;margin:0 auto;padding:0 28px 80px">
+
+    <!-- HEADER -->
+    <header style="position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;padding:22px 0 18px;background:linear-gradient(#f3f1e9 78%,rgba(243,241,233,0));margin-bottom:8px">
+      <div onClick="{{ goHome }}" style="display:flex;align-items:center;gap:12px;cursor:pointer">
+        <div style="width:34px;height:34px;background-image:{{ logoBg }};background-size:contain;background-repeat:no-repeat;background-position:center"></div>
+        <div>
+          <div style="font-family:'Newsreader',serif;font-size:23px;line-height:.95;letter-spacing:-.01em">Sill</div>
+          <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:9.5px;letter-spacing:.22em;text-transform:uppercase;color:#9aa093;margin-top:1px">Plant care</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button onClick="{{ goHome }}" style="border:none;cursor:pointer;font-size:13.5px;font-weight:600;padding:9px 18px;border-radius:999px;transition:all .25s;background:{{ plantsBg }};color:{{ plantsCol }}">Plants</button>
+        <button onClick="{{ goCalendar }}" style="border:none;cursor:pointer;font-size:13.5px;font-weight:600;padding:9px 18px;border-radius:999px;transition:all .25s;background:{{ calBg }};color:{{ calCol }}">Calendar</button>
+        <button onClick="{{ startAdd }}" style="border:none;cursor:pointer;font-size:13.5px;font-weight:600;padding:9px 18px 9px 15px;border-radius:999px;background:#1e3d2f;color:#eef0e4;display:flex;align-items:center;gap:6px;transition:transform .25s" style-hover="transform:translateY(-1px)"><span style="font-size:16px;line-height:1;margin-top:-1px">＋</span>Add plant</button>
+      </div>
+    </header>
+
+    <!-- ========== DASHBOARD ========== -->
+    <sc-if value="{{ isDashboard }}" hint-placeholder-val="{{ true }}">
+      <div style="animation:fadeUp .5s cubic-bezier(.2,.8,.2,1) both">
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;margin:24px 0 26px">
+          <div>
+            <div style="font-family:ui-monospace,monospace;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#9aa093;margin-bottom:10px">{{ todayLabel }}</div>
+            <div style="font-family:'Newsreader',serif;font-size:48px;line-height:1;letter-spacing:-.02em">My plants</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-family:'Newsreader',serif;font-size:34px;line-height:1;color:#b5613a"><span data-count="{{ thirstyCount }}">{{ thirstyCount }}</span></div>
+            <div style="font-size:12px;color:#6b736a;margin-top:3px">need water soon · {{ totalCount }} total</div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-bottom:22px">
+          <button onClick="{{ setFilterAll }}" style="border:1px solid #e6e3d7;cursor:pointer;font-size:12.5px;font-weight:600;padding:7px 16px;border-radius:999px;transition:all .25s;background:{{ allBg }};color:{{ allCol }}">All plants</button>
+          <button onClick="{{ setFilterThirsty }}" style="border:1px solid #e6e3d7;cursor:pointer;font-size:12.5px;font-weight:600;padding:7px 16px;border-radius:999px;transition:all .25s;background:{{ thirstyBg }};color:{{ thirstyCol }}">Needs water</button>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <sc-for list="{{ visiblePlants }}" as="p" hint-placeholder-count="6">
+            <div onClick="{{ p.open }}" style="display:flex;align-items:center;gap:22px;background:#fbfaf5;border:1px solid #e6e3d7;border-radius:20px;padding:16px 22px;cursor:pointer;transition:transform .35s cubic-bezier(.2,.8,.2,1),box-shadow .35s,border-color .35s" style-hover="transform:translateX(5px);box-shadow:-8px 14px 34px rgba(30,61,47,.11);border-color:#d8d3c2">
+              <div style="flex:none;width:74px;height:74px;border-radius:16px;background:#eef0e4;display:flex;align-items:center;justify-content:center;overflow:hidden">
+                <div style="width:62px;height:62px;background-image:{{ p.iconBg }};background-size:contain;background-repeat:no-repeat;background-position:center"></div>
+              </div>
+              <div style="flex:none;width:184px">
+                <div style="font-family:'Newsreader',serif;font-size:23px;line-height:1.02">{{ p.name }}</div>
+                <div style="font-family:'Newsreader',serif;font-style:italic;font-size:13px;color:#9aa093;margin-top:1px">{{ p.common }}</div>
+                <div style="font-size:11px;color:#8a907f;margin-top:8px;font-family:ui-monospace,monospace;letter-spacing:.02em">{{ p.loc }}</div>
+              </div>
+              <div style="flex:1;min-width:0">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
+                  <span style="font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:#9aa093;font-family:ui-monospace,monospace">Watering cycle</span>
+                  <span style="font-size:12px;color:#6b736a">{{ p.freqLabel }}</span>
+                </div>
+                <div style="height:9px;border-radius:999px;background:#e9e6d9;overflow:hidden">
+                  <div style="height:100%;border-radius:999px;width:{{ p.meterWidth }}%;background:{{ p.statusColor }};transition:width .9s cubic-bezier(.2,.8,.2,1)"></div>
+                </div>
+                <div style="font-size:11.5px;color:#8a907f;margin-top:8px">Last watered {{ p.lastWateredAgo }}</div>
+              </div>
+              <div style="flex:none;width:96px;text-align:right">
+                <div style="font-family:'Newsreader',serif;font-size:46px;line-height:.85;color:{{ p.statusColor }}"><span data-count="{{ p.bigNum }}">{{ p.bigNum }}</span></div>
+                <div style="font-size:10.5px;color:#8a907f;text-transform:uppercase;letter-spacing:.07em;font-family:ui-monospace,monospace;margin-top:5px">{{ p.bigSub }}</div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- ========== DETAIL ========== -->
+    <sc-if value="{{ isDetail }}" hint-placeholder-val="{{ false }}">
+      <div style="animation:fadeUp .5s cubic-bezier(.2,.8,.2,1) both">
+        <button onClick="{{ goHome }}" style="border:none;background:none;cursor:pointer;color:#6b736a;font-size:13px;font-weight:600;padding:6px 0;margin:14px 0 18px;display:flex;align-items:center;gap:7px;transition:gap .25s" style-hover="gap:11px">‹ All plants</button>
+
+        <div style="display:flex;background:#1e3d2f;border-radius:26px;overflow:hidden;color:#eef0e4;min-height:262px">
+          <div style="flex:1;padding:38px 40px;display:flex;flex-direction:column;justify-content:center">
+            <div style="display:flex;align-items:center;gap:8px;font-family:ui-monospace,monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#b6cf90;margin-bottom:16px"><span style="width:8px;height:8px;border-radius:50%;background:{{ sel.dotColor }};display:inline-block;animation:pulse 1.9s infinite"></span>{{ sel.statusLine }}</div>
+            <div style="font-family:'Newsreader',serif;font-size:44px;line-height:1;letter-spacing:-.01em">{{ sel.name }}</div>
+            <div style="font-family:'Newsreader',serif;font-style:italic;font-size:16px;color:#9bb98a;margin-top:5px">{{ sel.latin }} · {{ sel.loc }}</div>
+            <div style="display:flex;align-items:baseline;gap:11px;margin-top:24px">
+              <span style="font-family:'Newsreader',serif;font-size:74px;line-height:.8"><span data-count="{{ sel.bigNum }}">{{ sel.bigNum }}</span></span>
+              <span style="font-size:14px;color:#9bb98a;max-width:96px;line-height:1.2">{{ sel.bigSub }}</span>
+            </div>
+            <div style="display:flex;gap:10px;margin-top:26px">
+              <button onClick="{{ waterSel }}" style="border:none;cursor:pointer;background:#eef0e4;color:#1e3d2f;font-weight:600;font-size:14px;padding:12px 22px;border-radius:999px;display:flex;align-items:center;gap:7px;transition:transform .25s" style-hover="transform:scale(1.04)">💧 Water now</button>
+              <button onClick="{{ editSel }}" style="border:1px solid rgba(238,240,228,.35);cursor:pointer;background:transparent;color:#eef0e4;font-weight:600;font-size:14px;padding:12px 22px;border-radius:999px;transition:background .25s" style-hover="background:rgba(238,240,228,.1)">Edit</button>
+            </div>
+          </div>
+          <div style="flex:none;width:300px;background:#274a39;display:flex;align-items:center;justify-content:center">
+            <div style="width:188px;height:188px;border-radius:50%;background:#2f5743;display:flex;align-items:center;justify-content:center">
+              <div style="width:150px;height:150px;background-image:{{ sel.iconBg }};background-size:contain;background-repeat:no-repeat;background-position:center;animation:floaty 5s ease-in-out infinite"></div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1.05fr .95fr;gap:18px;margin-top:18px">
+          <div style="display:flex;flex-direction:column;gap:18px">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <div style="background:#fbfaf5;border:1px solid #e6e3d7;border-radius:18px;padding:18px 20px">
+                <div style="font-family:ui-monospace,monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#9aa093;margin-bottom:9px">Light</div>
+                <div style="font-family:'Newsreader',serif;font-size:21px">{{ sel.light }}</div>
+              </div>
+              <div style="background:#fbfaf5;border:1px solid #e6e3d7;border-radius:18px;padding:18px 20px">
+                <div style="font-family:ui-monospace,monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#9aa093;margin-bottom:9px">Watering</div>
+                <div style="font-family:'Newsreader',serif;font-size:21px">{{ sel.freqLabel }}</div>
+              </div>
+              <div style="background:#fbfaf5;border:1px solid #e6e3d7;border-radius:18px;padding:18px 20px">
+                <div style="font-family:ui-monospace,monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#9aa093;margin-bottom:9px">Last watered</div>
+                <div style="font-family:'Newsreader',serif;font-size:21px">{{ sel.lastWateredAgo }}</div>
+              </div>
+              <div style="background:#fbfaf5;border:1px solid #e6e3d7;border-radius:18px;padding:18px 20px">
+                <div style="font-family:ui-monospace,monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#9aa093;margin-bottom:9px">Next due</div>
+                <div style="font-family:'Newsreader',serif;font-size:21px;color:{{ sel.statusColor }}">{{ sel.nextDueFmt }}</div>
+              </div>
+            </div>
+            <div style="background:#fbfaf5;border:1px solid #e6e3d7;border-radius:18px;padding:20px 22px">
+              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:11px">
+                <span style="font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:#9aa093;font-family:ui-monospace,monospace">Until next watering</span>
+                <span style="font-size:12px;color:{{ sel.statusColor }};font-weight:600">{{ sel.statusLabel }}</span>
+              </div>
+              <div style="height:11px;border-radius:999px;background:#e9e6d9;overflow:hidden">
+                <div style="height:100%;border-radius:999px;width:{{ sel.meterWidth }}%;background:{{ sel.statusColor }};transition:width .9s cubic-bezier(.2,.8,.2,1)"></div>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:18px">
+            <div style="background:#eef0e4;border:1px solid #e0e4d2;border-radius:18px;padding:22px 24px">
+              <div style="font-family:ui-monospace,monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#7c9b6b;margin-bottom:10px">🌿 Did you know?</div>
+              <div style="font-family:'Newsreader',serif;font-size:19px;line-height:1.42;color:#2a3a2c;text-wrap:pretty">{{ sel.fact }}</div>
+            </div>
+            <div style="background:#fbfaf5;border:1px solid #e6e3d7;border-radius:18px;padding:20px 24px">
+              <div style="font-family:ui-monospace,monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#9aa093;margin-bottom:16px">Watering history</div>
+              <div style="display:flex;flex-direction:column">
+                <sc-for list="{{ sel.history }}" as="h" hint-placeholder-count="4">
+                  <div style="display:flex;align-items:center;gap:14px;padding:9px 0">
+                    <span style="flex:none;width:11px;height:11px;border-radius:50%;background:{{ h.color }};box-shadow:0 0 0 4px {{ h.ring }}"></span>
+                    <span style="flex:1;font-size:14.5px;color:#1b211c">{{ h.dateFmt }}</span>
+                    <span style="font-size:12px;color:#9aa093;font-family:ui-monospace,monospace">{{ h.ago }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- ========== ADD / EDIT FORM ========== -->
+    <sc-if value="{{ isForm }}" hint-placeholder-val="{{ false }}">
+      <div style="animation:fadeUp .5s cubic-bezier(.2,.8,.2,1) both;max-width:760px;margin:0 auto">
+        <button onClick="{{ cancelForm }}" style="border:none;background:none;cursor:pointer;color:#6b736a;font-size:13px;font-weight:600;padding:6px 0;margin:14px 0 18px;display:flex;align-items:center;gap:7px;transition:gap .25s" style-hover="gap:11px">‹ Cancel</button>
+        <div style="font-family:'Newsreader',serif;font-size:40px;letter-spacing:-.01em;margin-bottom:28px">{{ formTitle }}</div>
+
+        <div style="display:flex;gap:26px;align-items:flex-start">
+          <div style="flex:none;width:172px">
+            <div style="width:172px;height:172px;border-radius:22px;background:#eef0e4;border:1px solid #e0e4d2;display:flex;align-items:center;justify-content:center;overflow:hidden">
+              <div style="width:128px;height:128px;background-image:{{ formIconBg }};background-size:contain;background-repeat:no-repeat;background-position:center;animation:popIn .4s both"></div></div>
+            <div style="text-align:center;font-size:11px;color:#9aa093;margin-top:10px;font-family:ui-monospace,monospace">pixel sprite preview</div>
+          </div>
+
+          <div style="flex:1;display:flex;flex-direction:column;gap:18px">
+            <div>
+              <label style="display:block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#9aa093;font-family:ui-monospace,monospace;margin-bottom:8px">Nickname</label>
+              <input value="{{ form.name }}" onInput="{{ onName }}" placeholder="e.g. Monstera by the window" style="width:100%;font-size:15px;padding:13px 15px;border-radius:13px;border:1px solid #e0ddce;background:#fbfaf5;color:#1b211c;transition:all .2s">
+            </div>
+            <div style="display:flex;gap:14px">
+              <div style="flex:1">
+                <label style="display:block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#9aa093;font-family:ui-monospace,monospace;margin-bottom:8px">Species</label>
+                <select value="{{ form.speciesIdx }}" onChange="{{ onSpecies }}" style="width:100%;font-size:15px;padding:13px 15px;border-radius:13px;border:1px solid #e0ddce;background:#fbfaf5;color:#1b211c;cursor:pointer">
+                  <sc-for list="{{ speciesOptions }}" as="o" hint-placeholder-count="6"><option value="{{ o.idx }}">{{ o.label }}</option></sc-for>
+                </select>
+              </div>
+              <div style="flex:1">
+                <label style="display:block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#9aa093;font-family:ui-monospace,monospace;margin-bottom:8px">Location</label>
+                <input value="{{ form.loc }}" onInput="{{ onLoc }}" placeholder="living room" style="width:100%;font-size:15px;padding:13px 15px;border-radius:13px;border:1px solid #e0ddce;background:#fbfaf5;color:#1b211c;transition:all .2s">
+              </div>
+            </div>
+            <div style="display:flex;gap:14px">
+              <div style="flex:1">
+                <label style="display:block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#9aa093;font-family:ui-monospace,monospace;margin-bottom:8px">Light</label>
+                <select value="{{ form.light }}" onChange="{{ onLight }}" style="width:100%;font-size:15px;padding:13px 15px;border-radius:13px;border:1px solid #e0ddce;background:#fbfaf5;color:#1b211c;cursor:pointer">
+                  <sc-for list="{{ lightOptions }}" as="l" hint-placeholder-count="4"><option value="{{ l }}">{{ l }}</option></sc-for>
+                </select>
+              </div>
+              <div style="flex:1">
+                <label style="display:block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#9aa093;font-family:ui-monospace,monospace;margin-bottom:8px">Last watered</label>
+                <input type="date" value="{{ form.lastWatered }}" onInput="{{ onLast }}" style="width:100%;font-size:15px;padding:12px 15px;border-radius:13px;border:1px solid #e0ddce;background:#fbfaf5;color:#1b211c">
+              </div>
+            </div>
+            <div>
+              <label style="display:flex;justify-content:space-between;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#9aa093;font-family:ui-monospace,monospace;margin-bottom:10px"><span>Water every</span><span style="color:#3f6b4a">{{ form.freq }} days</span></label>
+              <input type="range" min="1" max="30" value="{{ form.freq }}" onInput="{{ onFreq }}" style="width:100%">
+            </div>
+            <div style="display:flex;gap:10px;margin-top:6px">
+              <button onClick="{{ saveForm }}" style="border:none;cursor:pointer;background:#1e3d2f;color:#eef0e4;font-weight:600;font-size:14.5px;padding:13px 28px;border-radius:999px;transition:transform .25s" style-hover="transform:translateY(-1px)">{{ saveLabel }}</button>
+              <button onClick="{{ cancelForm }}" style="border:1px solid #e0ddce;cursor:pointer;background:transparent;color:#6b736a;font-weight:600;font-size:14.5px;padding:13px 24px;border-radius:999px">Cancel</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- ========== CALENDAR ========== -->
+    <sc-if value="{{ isCalendar }}" hint-placeholder-val="{{ false }}">
+      <div style="animation:fadeUp .5s cubic-bezier(.2,.8,.2,1) both">
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;margin:24px 0 26px">
+          <div>
+            <div style="font-family:ui-monospace,monospace;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#9aa093;margin-bottom:10px">Watering schedule</div>
+            <div style="font-family:'Newsreader',serif;font-size:48px;line-height:1;letter-spacing:-.02em">{{ monthLabel }}</div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button onClick="{{ prevMonth }}" style="border:1px solid #e6e3d7;background:#fbfaf5;cursor:pointer;width:42px;height:42px;border-radius:50%;font-size:18px;color:#1b211c;transition:all .25s" style-hover="background:#1e3d2f;color:#eef0e4">‹</button>
+            <button onClick="{{ nextMonth }}" style="border:1px solid #e6e3d7;background:#fbfaf5;cursor:pointer;width:42px;height:42px;border-radius:50%;font-size:18px;color:#1b211c;transition:all .25s" style-hover="background:#1e3d2f;color:#eef0e4">›</button>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1.55fr .9fr;gap:22px;align-items:start">
+          <div style="background:#fbfaf5;border:1px solid #e6e3d7;border-radius:22px;padding:22px">
+            <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:10px">
+              <sc-for list="{{ weekdays }}" as="w" hint-placeholder-count="7"><div style="text-align:center;font-family:ui-monospace,monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#9aa093">{{ w }}</div></sc-for>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px">
+              <sc-for list="{{ calCells }}" as="c" hint-placeholder-count="35">
+                <div style="aspect-ratio:1;border-radius:12px;background:{{ c.bg }};border:{{ c.border }};padding:7px 8px;display:flex;flex-direction:column;justify-content:space-between;min-height:0">
+                  <span style="font-size:12px;font-weight:600;color:{{ c.numColor }}">{{ c.day }}</span>
+                  <div style="display:flex;gap:3px;flex-wrap:wrap">
+                    <sc-for list="{{ c.dots }}" as="d" hint-placeholder-count="0"><span style="width:7px;height:7px;border-radius:50%;background:{{ d }}"></span></sc-for>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+            <div style="display:flex;gap:20px;margin-top:18px;padding-top:16px;border-top:1px solid #ece9dd">
+              <div style="display:flex;align-items:center;gap:7px;font-size:11.5px;color:#6b736a"><span style="width:9px;height:9px;border-radius:50%;background:#9bb98a"></span>Watered</div>
+              <div style="display:flex;align-items:center;gap:7px;font-size:11.5px;color:#6b736a"><span style="width:9px;height:9px;border-radius:50%;background:#b8862f"></span>Due soon</div>
+              <div style="display:flex;align-items:center;gap:7px;font-size:11.5px;color:#6b736a"><span style="width:9px;height:9px;border-radius:50%;background:#b5613a"></span>Overdue</div>
+            </div>
+          </div>
+
+          <div>
+            <div style="font-family:ui-monospace,monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#9aa093;margin-bottom:14px">Coming up</div>
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <sc-for list="{{ comingUp }}" as="u" hint-placeholder-count="5">
+                <div onClick="{{ u.open }}" style="display:flex;align-items:center;gap:13px;background:#fbfaf5;border:1px solid #e6e3d7;border-radius:16px;padding:11px 14px;cursor:pointer;transition:transform .3s,box-shadow .3s" style-hover="transform:translateX(3px);box-shadow:-5px 10px 22px rgba(30,61,47,.09)">
+                  <div style="flex:none;width:46px;height:46px;border-radius:12px;background:#eef0e4;display:flex;align-items:center;justify-content:center;overflow:hidden"><div style="width:38px;height:38px;background-image:{{ u.iconBg }};background-size:contain;background-repeat:no-repeat;background-position:center"></div></div>
+                  <div style="flex:1;min-width:0">
+                    <div style="font-family:'Newsreader',serif;font-size:17px;line-height:1.05">{{ u.name }}</div>
+                    <div style="font-size:11.5px;color:#9aa093;margin-top:2px">{{ u.dateFmt }}</div>
+                  </div>
+                  <div style="flex:none;text-align:right">
+                    <div style="font-size:12.5px;font-weight:700;color:{{ u.color }}">{{ u.rel }}</div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1080,&quot;height&quot;:820}}">
+class Component extends DCLogic {
+  _icons = {};
+  _lastNonce = 0;
+
+  state = {
+    view: 'dashboard',
+    selectedId: null,
+    filter: 'all',
+    monthOffset: 0,
+    revealed: false,
+    nonce: 0,
+    plants: this.defaultPlants(),
+    form: { name: '', loc: '', speciesIdx: 0, light: 'Bright indirect', freq: 7, lastWatered: '2026-06-19', editingId: null },
+  };
+
+  // ---------- date helpers ----------
+  TODAY = '2026-06-19';
+  MS = 86400000;
+  M = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  parse(s) { const a = s.split('-').map(Number); return new Date(a[0], a[1]-1, a[2]); }
+  iso(d) { return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+  addDays(s, n) { const d = this.parse(s); d.setDate(d.getDate()+n); return this.iso(d); }
+  diff(a, b) { return Math.round((this.parse(a) - this.parse(b)) / this.MS); }
+  fmt(s) { const d = this.parse(s); return d.getDate() + ' ' + this.M[d.getMonth()]; }
+
+  // ---------- pixel sprites ----------
+  sprites() {
+    const broad = ["                  ","        DD        ","      DGLLD       ","  DD DGLLLGD DD   "," DGLD GLLLLG DLGD "," DLLLGGLLHLLGGLLD "," DLLLLLLLLLLLLLLD ","  DLLHLLLLLLHLLD  ","  DDLLLLLLLLLLDD  ","    DDGLLLLGDD    ","       DGGD       ","        SS        ","        SS        ","      rrTTrr      ","      TTTTTT      ","      tTTTTt      ","      ttTTtt      ","       tooo       "];
+    const cane = ["                  ","    D        D    ","   DLD      DLD   ","   DLLD    DLLD   ","    DLLD  DLLD    ","   D DLLDDLLD D   ","  DLD DLLLLD DLD  ","  DLLD DLLLD DLD  ","   DLLD DLD DLD   ","    DLLD S DLLD   ","     DLD S DLD    ","      D SS D      ","        SS        ","      rrTTrr      ","      TTTTTT      ","      tTTTTt      ","      ttTTtt      ","       tooo       "];
+    const trail = ["                  ","       DGGD       ","      DLHHLD      ","  DGD DLLLD DGD   "," DLHLD DGGD DLHLD "," DLLLD  SS  DLLLD ","  DGD   SS   DGD  "," DGD    SS    DGD ","DLHLD  rTTr  DLHLD","DLLLD  TTTT  DLLLD"," DGD   TTTT   DGD ","       tTTt       ","  DGD  tttt  DGD  "," DLHLD      DLHLD "," DLLLD      DLLLD ","  DGD        DGD  ","                  ","                  "];
+    const succ = ["                  ","   DGD      DGD   ","  DLHGD    DGHLD  ","  DLLGD    DGLLD  ","   DGDD    DDGD   ","    D  DGGD  D    ","      DLHHLD      ","      DLLLLD      ","      DDGGDD      ","        SS        ","       DSSD       ","        SS        ","      rrTTrr      ","      TTTTTT      ","      TTTTTT      ","      tTTTTt      ","      ttTTtt      ","       tooo       "];
+    const fan = ["                  ","  D    DD    D    ","  LD  DLLD  DL    ","  LLD DLLD DLL    ","  LLLDDLLDDLLL    ","  LLLLGLLGLLLL    ","   LLLGLLGLLL     ","    LLGLLGLL      ","     LGLLGL       ","      GLLG        ","       SS         ","       SS         ","       SS         ","     rrTTrr       ","     TTTTTT       ","     tTTTTt       ","     ttTTtt       ","      tooo        "];
+    return { broad, cane, trail, succ, fan };
+  }
+  greenSets() {
+    return {
+      forest: { D:'#1c3a2c', G:'#3f6b4a', L:'#76995f', H:'#b6cf90' },
+      deep:   { D:'#173024', G:'#345a3f', L:'#5f8a53', H:'#9cc080' },
+      bright: { D:'#26452f', G:'#4a7a4f', L:'#86a85f', H:'#c3d893' },
+      jade:   { D:'#2a4636', G:'#4c7158', L:'#83a06f', H:'#bcd29a' },
+    };
+  }
+  bg(arch, greens) {
+    const key = arch + '|' + greens;
+    this._svg = this._svg || {};
+    if (this._svg[key]) return this._svg[key];
+    const g = this.greenSets()[greens] || this.greenSets().forest;
+    const pal = { D:g.D, G:g.G, L:g.L, H:g.H, S:'#7a5c3a', T:'#c8895b', t:'#ad6e44', r:'#dba87a', o:'#5b4636' };
+    const map = this.sprites()[arch] || this.sprites().broad;
+    const cols = map[0].length, rows = map.length;
+    let rects = '';
+    for (let y=0;y<rows;y++){ let x=0; while(x<cols){ const ch=map[y][x]; if(ch===' '||!pal[ch]){x++;continue;} let w=1; while(x+w<cols&&map[y][x+w]===ch)w++; rects+="<rect x='"+x+"' y='"+y+"' width='"+w+"' height='1' fill='"+pal[ch]+"'/>"; x+=w; } }
+    const svg = "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 "+cols+" "+rows+"' shape-rendering='crispEdges'>"+rects+"</svg>";
+    const url = 'url("data:image/svg+xml,' + encodeURIComponent(svg) + '")';
+    this._svg[key] = url;
+    return url;
+  }
+  icon(arch, greens) {
+    const key = arch + '|' + greens;
+    if (this._icons[key]) return this._icons[key];
+    const g = this.greenSets()[greens] || this.greenSets().forest;
+    const pal = { D:g.D, G:g.G, L:g.L, H:g.H, S:'#7a5c3a', T:'#c8895b', t:'#ad6e44', r:'#dba87a', o:'#5b4636' };
+    const map = this.sprites()[arch] || this.sprites().broad;
+    const cols = map[0].length, rows = map.length;
+    const c = document.createElement('canvas'); c.width = cols; c.height = rows;
+    const ctx = c.getContext('2d');
+    for (let y=0;y<rows;y++) for (let x=0;x<cols;x++){ const ch=map[y][x]; if(ch===' '||!pal[ch])continue; ctx.fillStyle=pal[ch]; ctx.fillRect(x,y,1,1); }
+    const url = c.toDataURL();
+    this._icons[key] = url;
+    return url;
+  }
+
+  SPECIES = [
+    { common:'Monstera',   latin:'Monstera deliciosa', arch:'broad', greens:'forest', light:'Bright indirect', freq:7,  fact:'The holes in its leaves — fenestrations — let light and rain reach the leaves below.' },
+    { common:'Dracaena',   latin:'Dracaena fragrans',  arch:'cane',  greens:'deep',   light:'Low–medium',     freq:11, fact:'Nicknamed the corn plant for its thick cane stalks and long arching leaves.' },
+    { common:'Pothos',     latin:'Epipremnum aureum',  arch:'trail', greens:'forest', light:'Low light OK',    freq:7,  fact:'Nearly unkillable — its vines can grow over 12 metres long indoors.' },
+    { common:'Jade',       latin:'Crassula ovata',     arch:'succ',  greens:'jade',   light:'Bright direct',   freq:21, fact:'A succulent that stores water in its plump leaves — long seen as a symbol of prosperity.' },
+    { common:'Strelitzia', latin:'Strelitzia reginae', arch:'fan',   greens:'bright', light:'Bright direct',   freq:7,  fact:'Its flower mimics a tropical bird to lure sunbirds in to pollinate it.' },
+    { common:'Other plant',latin:'Houseplant',         arch:'broad', greens:'forest', light:'Bright indirect', freq:7,  fact:'Keep your own care notes for this one as you learn its rhythm.' },
+  ];
+
+  defaultPlants() {
+    const T = '2026-06-19';
+    const mk = (lw, freq) => { const d = new Date(2026,5,19); d.setDate(d.getDate()-lw); const last = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); const hist=[]; for(let i=0;i<4;i++){ const h=new Date(2026,5,19); h.setDate(h.getDate()-lw-i*freq); hist.push(h.getFullYear()+'-'+String(h.getMonth()+1).padStart(2,'0')+'-'+String(h.getDate()).padStart(2,'0')); } return { lastWatered:last, history:hist }; };
+    const rows = [
+      { id:'p1', name:'Monstera', loc:'living room', latin:'Monstera deliciosa', common:'Swiss cheese plant', light:'Bright indirect', freqDays:7,  arch:'broad', greens:'forest', since:3,  fact:'The holes in its leaves — fenestrations — let light and rain reach the leaves below.' },
+      { id:'p2', name:'Dracaena', loc:'bedroom',     latin:'Dracaena fragrans',  common:'Corn plant',        light:'Low–medium',     freqDays:11, arch:'cane',  greens:'deep',   since:9,  fact:'Nicknamed the corn plant for its thick cane stalks and long arching leaves.' },
+      { id:'p3', name:'Monstera', loc:'hallway',     latin:'Monstera deliciosa', common:'Swiss cheese plant', light:'Medium',         freqDays:7,  arch:'broad', greens:'bright', since:8,  fact:'In the wild it climbs trees, anchoring itself with thick aerial roots.' },
+      { id:'p4', name:'Pothos',   loc:'shelf',       latin:'Epipremnum aureum',  common:'Devil’s ivy',       light:'Low light OK',   freqDays:7,  arch:'trail', greens:'forest', since:1,  fact:'Nearly unkillable — its vines can grow over 12 metres long indoors.' },
+      { id:'p5', name:'Jade',     loc:'windowsill',  latin:'Crassula ovata',     common:'Jade plant',        light:'Bright direct',  freqDays:21, arch:'succ',  greens:'jade',   since:12, fact:'A succulent that stores water in its plump leaves — long seen as a symbol of prosperity.' },
+      { id:'p6', name:'Strelitzia',loc:'corner',     latin:'Strelitzia reginae', common:'Bird of paradise',  light:'Bright direct',  freqDays:7,  arch:'fan',   greens:'bright', since:5,  fact:'Its flower mimics a tropical bird to lure sunbirds in to pollinate it.' },
+    ];
+    return rows.map(r => { const m = mk(r.since, r.freqDays); return { id:r.id, name:r.name, loc:r.loc, latin:r.latin, common:r.common, light:r.light, freqDays:r.freqDays, arch:r.arch, greens:r.greens, fact:r.fact, lastWatered:m.lastWatered, history:m.history }; });
+  }
+
+  // ---------- lifecycle ----------
+  componentDidMount() {
+    try { const raw = localStorage.getItem('sill.plants.v2'); if (raw) { const p = JSON.parse(raw); if (Array.isArray(p) && p.length) this.setState({ plants: p }); } } catch(e) {}
+    this.reveal(); this.animate();
+  }
+  componentDidUpdate() {
+    if (this.state.nonce !== this._lastNonce) { this._lastNonce = this.state.nonce; this.reveal(); this.animate(); }
+  }
+  reveal() { this.setState({ revealed: false }); requestAnimationFrame(() => requestAnimationFrame(() => this.setState({ revealed: true }))); }
+  animate() {
+    setTimeout(() => {
+      document.querySelectorAll('[data-count]').forEach(el => {
+        const to = parseFloat(el.getAttribute('data-count')) || 0; const dur = 650; const start = performance.now();
+        const tick = (now) => { const t = Math.min(1,(now-start)/dur); const e = 1-Math.pow(1-t,3); el.textContent = Math.round(to*e); if (t<1) requestAnimationFrame(tick); };
+        requestAnimationFrame(tick);
+      });
+    }, 30);
+  }
+  persist(plants) { try { localStorage.setItem('sill.plants.v2', JSON.stringify(plants)); } catch(e) {} }
+  bump(extra) { this.setState(s => ({ nonce: s.nonce + 1, ...(extra||{}) })); }
+
+  // ---------- actions ----------
+  nav(view, extra) { this.setState(s => ({ view, nonce: s.nonce + 1, ...(extra||{}) })); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+  goHome = () => this.nav('dashboard');
+  goCalendar = () => this.nav('calendar');
+  openDetail = (id) => this.nav('detail', { selectedId: id });
+  setFilterAll = () => this.bump({ filter: 'all' });
+  setFilterThirsty = () => this.bump({ filter: 'thirsty' });
+  prevMonth = () => this.bump({ monthOffset: this.state.monthOffset - 1 });
+  nextMonth = () => this.bump({ monthOffset: this.state.monthOffset + 1 });
+
+  waterPlant = (id) => {
+    const plants = this.state.plants.map(p => {
+      if (p.id !== id) return p;
+      const history = p.history.includes(this.TODAY) ? p.history : [this.TODAY, ...p.history];
+      return { ...p, lastWatered: this.TODAY, history };
+    });
+    this.persist(plants);
+    this.setState(s => ({ plants, nonce: s.nonce + 1 }));
+  };
+  waterSel = () => this.waterPlant(this.state.selectedId);
+
+  setForm = (patch) => this.setState(s => ({ form: { ...s.form, ...patch } }));
+  onName = (e) => this.setForm({ name: e.target.value });
+  onLoc = (e) => this.setForm({ loc: e.target.value });
+  onLight = (e) => this.setForm({ light: e.target.value });
+  onFreq = (e) => this.setForm({ freq: +e.target.value });
+  onLast = (e) => this.setForm({ lastWatered: e.target.value });
+  onSpecies = (e) => { const i = +e.target.value; const sp = this.SPECIES[i]; this.setForm({ speciesIdx: i, light: sp.light, freq: sp.freq }); };
+
+  startAdd = () => { this.setState(s => ({ view: 'form', nonce: s.nonce + 1, form: { name: '', loc: '', speciesIdx: 0, light: this.SPECIES[0].light, freq: this.SPECIES[0].freq, lastWatered: this.TODAY, editingId: null } })); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+  editSel = () => {
+    const p = this.state.plants.find(x => x.id === this.state.selectedId); if (!p) return;
+    let idx = this.SPECIES.findIndex(s => s.latin === p.latin); if (idx < 0) idx = 5;
+    this.setState(s => ({ view: 'form', nonce: s.nonce + 1, form: { name: p.name, loc: p.loc, speciesIdx: idx, light: p.light, freq: p.freqDays, lastWatered: p.lastWatered, editingId: p.id } }));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+  cancelForm = () => { const f = this.state.form; this.nav(f.editingId ? 'detail' : 'dashboard'); };
+  saveForm = () => {
+    const f = this.state.form; const sp = this.SPECIES[f.speciesIdx];
+    const name = (f.name || '').trim() || sp.common;
+    let plants;
+    if (f.editingId) {
+      plants = this.state.plants.map(p => p.id === f.editingId ? { ...p, name, loc: f.loc || p.loc, latin: sp.latin, common: sp.common, light: f.light, freqDays: f.freq, arch: sp.arch, greens: sp.greens, fact: sp.fact, lastWatered: f.lastWatered } : p);
+    } else {
+      const np = { id: 'p' + Date.now(), name, loc: f.loc || 'home', latin: sp.latin, common: sp.common, light: f.light, freqDays: f.freq, arch: sp.arch, greens: sp.greens, fact: sp.fact, lastWatered: f.lastWatered, history: [f.lastWatered] };
+      plants = [...this.state.plants, np];
+    }
+    this.persist(plants);
+    this.setState(s => ({ plants, view: f.editingId ? 'detail' : 'dashboard', selectedId: f.editingId || s.selectedId, nonce: s.nonce + 1 }));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // ---------- derive ----------
+  derive(p, revealed) {
+    const since = this.diff(this.TODAY, p.lastWatered);
+    const nextDue = this.addDays(p.lastWatered, p.freqDays);
+    const nextIn = this.diff(nextDue, this.TODAY);
+    let statusColor, statusLabel, bigNum, bigSub, statusLine, dotColor;
+    const overdue = nextIn <= 0;
+    if (nextIn < 0) { statusColor = '#b5613a'; dotColor = '#d98a5b'; statusLabel = Math.abs(nextIn) + 'd overdue'; bigNum = Math.abs(nextIn); bigSub = 'days overdue'; statusLine = 'Needs water now'; }
+    else if (nextIn === 0) { statusColor = '#b5613a'; dotColor = '#d98a5b'; statusLabel = 'Water today'; bigNum = 0; bigSub = 'water today'; statusLine = 'Water today'; }
+    else if (nextIn <= 2) { statusColor = '#b8862f'; dotColor = '#d8ab4a'; statusLabel = 'In ' + nextIn + 'd'; bigNum = nextIn; bigSub = 'days to water'; statusLine = 'Due soon'; }
+    else { statusColor = '#3f6b4a'; dotColor = '#7fae6a'; statusLabel = 'Happy'; bigNum = nextIn; bigSub = 'days to water'; statusLine = 'Looking healthy'; }
+    const progress = Math.min(118, Math.round((since / p.freqDays) * 100));
+    const history = p.history.slice().sort().reverse().slice(0, 5).map(h => { const a = this.diff(this.TODAY, h); return { dateFmt: this.fmt(h), ago: a === 0 ? 'today' : a + 'd ago', color: '#7fae6a', ring: 'rgba(127,174,106,.18)' }; });
+    return {
+      ...p, since, nextIn, nextDue, overdue,
+      statusColor, statusLabel, bigNum, bigSub, statusLine, dotColor,
+      progress, meterWidth: revealed ? progress : 0,
+      freqLabel: 'Every ' + p.freqDays + ' days',
+      lastWateredAgo: since === 0 ? 'today' : since + ' days ago',
+      nextDueFmt: this.fmt(nextDue),
+      iconUrl: this.icon(p.arch, p.greens),
+      iconBg: this.bg(p.arch, p.greens),
+      history,
+      open: () => this.openDetail(p.id),
+    };
+  }
+
+  buildCalendar(plants, offset) {
+    const base = new Date(2026, 5 + offset, 1);
+    const year = base.getFullYear(), month = base.getMonth();
+    const monthLabel = this.M[month] + ' ' + year;
+    const daysIn = new Date(year, month + 1, 0).getDate();
+    const lead = (new Date(year, month, 1).getDay() + 6) % 7; // Monday-first
+    // events
+    const ev = {};
+    const push = (iso, color) => { (ev[iso] = ev[iso] || []).push(color); };
+    plants.forEach(p => {
+      const d = this.derive(p, true);
+      p.history.forEach(h => { const dt = this.parse(h); if (dt.getFullYear() === year && dt.getMonth() === month) push(h, '#9bb98a'); });
+      const nd = this.parse(d.nextDue); if (nd.getFullYear() === year && nd.getMonth() === month) push(d.nextDue, d.statusColor);
+    });
+    const cells = [];
+    for (let i = 0; i < lead; i++) cells.push({ day: '', bg: 'transparent', border: 'none', numColor: 'transparent', dots: [] });
+    for (let dnum = 1; dnum <= daysIn; dnum++) {
+      const iso = year + '-' + String(month + 1).padStart(2, '0') + '-' + String(dnum).padStart(2, '0');
+      const isToday = iso === this.TODAY;
+      const dots = (ev[iso] || []).slice(0, 4);
+      cells.push({ day: dnum, bg: isToday ? '#1e3d2f' : (dots.length ? '#f1efe5' : '#fbfaf5'), border: isToday ? 'none' : '1px solid #ece9dd', numColor: isToday ? '#eef0e4' : '#1b211c', dots });
+    }
+    while (cells.length % 7 !== 0) cells.push({ day: '', bg: 'transparent', border: 'none', numColor: 'transparent', dots: [] });
+    return { monthLabel, cells };
+  }
+
+  renderVals() {
+    const s = this.state;
+    const plants = s.plants;
+    const derived = plants.map(p => this.derive(p, s.revealed)).sort((a, b) => a.nextIn - b.nextIn);
+    const thirstyCount = derived.filter(d => d.nextIn <= 2).length;
+    const visiblePlants = s.filter === 'thirsty' ? derived.filter(d => d.nextIn <= 2) : derived;
+    const selBase = plants.find(p => p.id === s.selectedId) || plants[0];
+    const sel = selBase ? this.derive(selBase, s.revealed) : null;
+
+    const active = s.view === 'dashboard' || s.view === 'detail';
+    const onCal = s.view === 'calendar';
+
+    // calendar
+    const cal = this.buildCalendar(plants, s.monthOffset);
+    const comingUp = derived.filter(d => d.nextIn <= 21).sort((a, b) => a.nextIn - b.nextIn).map(d => ({
+      name: d.name, iconUrl: d.iconUrl, iconBg: d.iconBg, dateFmt: d.nextDueFmt, color: d.statusColor,
+      rel: d.nextIn < 0 ? Math.abs(d.nextIn) + 'd late' : d.nextIn === 0 ? 'today' : 'in ' + d.nextIn + 'd',
+      open: () => this.openDetail(d.id),
+    }));
+
+    return {
+      // nav
+      logoUrl: this.icon('broad', 'forest'),
+      logoBg: this.bg('broad', 'forest'),
+      formIconBg: this.bg(this.SPECIES[s.form.speciesIdx].arch, this.SPECIES[s.form.speciesIdx].greens),
+      plantsBg: active ? '#1e3d2f' : 'transparent', plantsCol: active ? '#eef0e4' : '#6b736a',
+      calBg: onCal ? '#1e3d2f' : 'transparent', calCol: onCal ? '#eef0e4' : '#6b736a',
+      goHome: this.goHome, goCalendar: this.goCalendar, startAdd: this.startAdd,
+      isDashboard: s.view === 'dashboard', isDetail: s.view === 'detail', isForm: s.view === 'form', isCalendar: onCal,
+      // dashboard
+      todayLabel: 'Friday · 19 June 2026',
+      totalCount: plants.length, thirstyCount, visiblePlants,
+      allBg: s.filter === 'all' ? '#1e3d2f' : '#fbfaf5', allCol: s.filter === 'all' ? '#eef0e4' : '#6b736a',
+      thirstyBg: s.filter === 'thirsty' ? '#1e3d2f' : '#fbfaf5', thirstyCol: s.filter === 'thirsty' ? '#eef0e4' : '#6b736a',
+      setFilterAll: this.setFilterAll, setFilterThirsty: this.setFilterThirsty,
+      // detail
+      sel, waterSel: this.waterSel, editSel: this.editSel,
+      // form
+      form: s.form,
+      formTitle: s.form.editingId ? 'Edit plant' : 'Add a plant',
+      saveLabel: s.form.editingId ? 'Save changes' : 'Add to my plants',
+      formIconUrl: this.icon(this.SPECIES[s.form.speciesIdx].arch, this.SPECIES[s.form.speciesIdx].greens),
+      speciesOptions: this.SPECIES.map((sp, i) => ({ idx: i, label: sp.common + ' · ' + sp.latin })),
+      lightOptions: ['Bright direct', 'Bright indirect', 'Medium', 'Low–medium', 'Low light OK'],
+      onName: this.onName, onLoc: this.onLoc, onLight: this.onLight, onFreq: this.onFreq, onLast: this.onLast, onSpecies: this.onSpecies,
+      saveForm: this.saveForm, cancelForm: this.cancelForm,
+      // calendar
+      monthLabel: cal.monthLabel, calCells: cal.cells, weekdays: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
+      comingUp, prevMonth: this.prevMonth, nextMonth: this.nextMonth,
+    };
+  }
+}
+</script>
+</body>
+</html>
