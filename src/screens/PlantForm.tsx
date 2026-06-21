@@ -94,6 +94,10 @@ function PlantFormInner({ mode, editing, upsert, navigate }: FormInnerProps) {
   const onSave = async () => {
     const name = form.name.trim() || sp.common
     if (mode === 'edit' && editing) {
+      // Preserve the plant's existing fact when the species hasn't changed —
+      // distinct per-plant facts (e.g. the 6 Monsteras) shouldn't get reset
+      // every time someone edits an unrelated field.
+      const speciesChanged = sp.latin !== editing.latin
       const updated: Plant = {
         ...editing,
         name,
@@ -105,7 +109,7 @@ function PlantFormInner({ mode, editing, upsert, navigate }: FormInnerProps) {
         arch: sp.arch,
         greens: sp.greens,
         size: form.size,
-        fact: sp.fact,
+        fact: speciesChanged ? sp.fact : editing.fact,
         lastWatered: form.lastWatered,
       }
       await upsert(updated)
