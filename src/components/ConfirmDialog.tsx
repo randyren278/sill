@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { button, colors, radius, type } from '../lib/tokens'
 
 type Props = {
@@ -28,21 +29,27 @@ export function ConfirmDialog({
   useEffect(() => {
     if (!open) return
     cancelRef.current?.focus()
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onCancel()
     }
     document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
+    return () => {
+      document.body.style.overflow = prevOverflow
+      document.removeEventListener('keydown', onKey)
+    }
   }, [open, onCancel])
 
   if (!open) return null
 
-  return (
+  return createPortal(
     <div
       onClick={onCancel}
       style={{
         position: 'fixed',
         inset: 0,
+        height: '100dvh',
         background: 'rgba(243,241,233,.7)',
         display: 'flex',
         alignItems: 'center',
@@ -83,9 +90,9 @@ export function ConfirmDialog({
           <div
             style={{
               fontFamily: type.body.fontFamily,
-              fontSize: type.body.fontSize,
-              lineHeight: 1.5,
-              color: colors.ink.muted,
+              fontSize: 16,
+              lineHeight: 1.45,
+              color: '#4f574d',
               marginBottom: 22,
             }}
           >
@@ -128,6 +135,7 @@ export function ConfirmDialog({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

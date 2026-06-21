@@ -305,7 +305,7 @@ export function PlantDetail() {
       <ConfirmDialog
         open={confirmOpen}
         title={`Delete ${sel.name}?`}
-        body="This can't be undone."
+        body="This can’t be undone."
         destructive
         confirmLabel="Delete"
         onCancel={() => setConfirmOpen(false)}
