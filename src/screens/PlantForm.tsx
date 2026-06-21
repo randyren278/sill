@@ -189,7 +189,7 @@ function PlantFormInner({ mode, editing, upsert, navigate }: FormInnerProps) {
             style={{
               textAlign: 'center',
               fontSize: 11,
-              color: '#9aa093',
+              color: '#6b736a',
               marginTop: 10,
               fontFamily: 'ui-monospace, monospace',
             }}
@@ -258,7 +258,7 @@ function PlantFormInner({ mode, editing, upsert, navigate }: FormInnerProps) {
                 fontSize: 11,
                 letterSpacing: '.12em',
                 textTransform: 'uppercase',
-                color: '#9aa093',
+                color: '#6b736a',
                 fontFamily: 'ui-monospace, monospace',
                 marginBottom: 10,
               }}

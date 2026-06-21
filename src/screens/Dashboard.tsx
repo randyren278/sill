@@ -141,7 +141,7 @@ function PlantRow({ plant }: { plant: DerivedPlant }) {
             fontFamily: "'Newsreader', serif",
             fontStyle: 'italic',
             fontSize: 13,
-            color: '#9aa093',
+            color: '#6b736a',
             marginTop: 1,
           }}
         >

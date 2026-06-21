@@ -12,9 +12,9 @@ export const SPECIES: Species[] = [
 export const LIGHT_OPTIONS = ['Bright direct', 'Bright indirect', 'Medium', 'Low–medium', 'Low light OK'] as const
 
 export const SIZE_OPTIONS: { value: import('../data/types').SizeKey; label: string }[] = [
-  { value: 'xs', label: 'Tiny (cutting in water)' },
-  { value: 'sm', label: 'Small (young / cutting)' },
-  { value: 'md', label: 'Medium (regular pot)' },
+  { value: 'xs', label: 'Tiny' },
+  { value: 'sm', label: 'Small' },
+  { value: 'md', label: 'Medium' },
   { value: 'lg', label: 'Large' },
-  { value: 'xl', label: 'Huge (mature / floor)' },
+  { value: 'xl', label: 'Huge' },
 ]

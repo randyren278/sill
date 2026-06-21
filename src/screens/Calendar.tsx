@@ -79,10 +79,10 @@ export function Calendar() {
                 style={{
                   textAlign: 'center',
                   fontFamily: 'ui-monospace, monospace',
-                  fontSize: 10,
-                  letterSpacing: '.08em',
+                  fontSize: 12,
+                  letterSpacing: '.1em',
                   textTransform: 'uppercase',
-                  color: '#9aa093',
+                  color: '#6b736a',
                 }}
               >
                 {w}
