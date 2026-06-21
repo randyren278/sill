@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { usePlants } from '../data/PlantsProvider'
 import { derive } from '../lib/derive'
@@ -6,12 +6,14 @@ import { MeterBar } from '../components/MeterBar'
 import { NumberCountUp } from '../components/NumberCountUp'
 import { PlantSprite } from '../components/PlantSprite'
 import { StatusDot } from '../components/StatusDot'
-import { button, radius, type } from '../lib/tokens'
+import { ConfirmDialog } from '../components/ConfirmDialog'
+import { button, colors, radius, type } from '../lib/tokens'
 
 export function PlantDetail() {
   const { id } = useParams<{ id: string }>()
-  const { plants, water } = usePlants()
+  const { plants, water, remove } = usePlants()
   const navigate = useNavigate()
+  const [confirmOpen, setConfirmOpen] = useState(false)
 
   const plant = plants.find((p) => p.id === id)
   const sel = useMemo(() => (plant ? derive(plant, true) : null), [plant])
@@ -129,6 +131,24 @@ export function PlantDetail() {
               }}
             >
               Edit
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmOpen(true)}
+              className="hov-darken"
+              style={{
+                border: `1px solid ${colors.status.overdue}`,
+                cursor: 'pointer',
+                background: button.ghostOutlineInverse.background,
+                color: colors.status.overdue,
+                fontWeight: type.weight.semibold,
+                fontSize: button.ghostOutlineInverse.fontSize,
+                padding: button.ghostOutlineInverse.padding,
+                borderRadius: radius.pill,
+                transition: 'background .25s',
+              }}
+            >
+              Delete
             </button>
           </div>
         </div>
@@ -282,6 +302,19 @@ export function PlantDetail() {
           </div>
         </div>
       </div>
+      <ConfirmDialog
+        open={confirmOpen}
+        title={`Delete ${sel.name}?`}
+        body="This can't be undone."
+        destructive
+        confirmLabel="Delete"
+        onCancel={() => setConfirmOpen(false)}
+        onConfirm={async () => {
+          setConfirmOpen(false)
+          await remove(sel.id)
+          navigate('/')
+        }}
+      />
     </div>
   )
 }

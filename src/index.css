@@ -33,6 +33,11 @@ body {
   to   { opacity: 1; transform: scale(1); }
 }
 
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
 @keyframes sway {
   0%   { transform: rotate(0deg); }
   18%  { transform: rotate(4deg); }
@@ -178,4 +183,22 @@ button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
   .cal-grid { gap: 4px !important; }
   .cal-cell { padding: 4px 5px !important; min-height: 36px; }
   .cal-legend { flex-wrap: wrap; gap: 12px !important; }
+}
+
+/* Narrow phones (≤480) — tighter plant rows and slimmer hero padding */
+@media (max-width: 480px) {
+  .app-container { padding: 0 12px 64px !important; }
+
+  /* Plant rows: smaller sprite well, hide italic latin, shrink type */
+  .plant-row { gap: 10px !important; padding: 12px 14px !important; }
+  .plant-row > div:first-child { width: 56px !important; height: 56px !important; }
+  .plant-row > div:first-child > * { width: 48px !important; height: 48px !important; }
+  .plant-row-name .pr-name { font-size: 17px !important; }
+  .plant-row-name .pr-latin { display: none; }
+  .plant-row-big .pr-big { font-size: 30px !important; }
+
+  /* PlantDetail hero: claw back horizontal room */
+  .pd-hero-text { padding: 22px 18px !important; }
+  .pd-hero-name { font-size: 28px !important; }
+  .pd-hero-count { font-size: 48px !important; }
 }

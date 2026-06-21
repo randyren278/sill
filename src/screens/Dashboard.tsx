@@ -136,6 +136,7 @@ function PlantRow({ plant }: { plant: DerivedPlant }) {
       <div className="plant-row-name" style={{ flex: 'none', width: 184 }}>
         <div className="pr-name" style={{ fontFamily: "'Newsreader', serif", fontSize: 23, lineHeight: 1.02 }}>{plant.name}</div>
         <div
+          className="pr-latin"
           style={{
             fontFamily: "'Newsreader', serif",
             fontStyle: 'italic',
