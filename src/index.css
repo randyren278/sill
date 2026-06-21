@@ -86,7 +86,7 @@ button:focus-visible {
 /* Tap target floor for chip-style buttons on touch devices */
 .chip {
   min-width: 44px;
-  min-height: 36px;
+  min-height: 44px;
 }
 
 input[type=range] {
@@ -144,8 +144,8 @@ button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
 
   /* Header — drop subtitle and "Add plant" label, shrink button padding */
   .hdr-subtitle, .hdr-add-label { display: none; }
-  .hdr-btn { padding: 8px 11px !important; font-size: 12px !important; }
-  .hdr-actions { gap: 4px !important; }
+  .hdr-btn { padding: 10px 12px !important; font-size: 12px !important; min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+  .hdr-actions { gap: 6px !important; }
 
   /* Dashboard hero stacks vertically */
   .dash-hero { flex-direction: column; align-items: flex-start !important; gap: 12px !important; }
@@ -181,7 +181,7 @@ button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
   .cal-wrap { grid-template-columns: 1fr !important; }
   .cal-month { font-size: 36px !important; }
   .cal-grid { gap: 4px !important; }
-  .cal-cell { padding: 4px 5px !important; min-height: 36px; }
+  .cal-cell { padding: 4px 5px !important; min-height: 44px; }
   .cal-legend { flex-wrap: wrap; gap: 12px !important; }
 }
 
@@ -201,4 +201,15 @@ button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
   .pd-hero-text { padding: 22px 18px !important; }
   .pd-hero-name { font-size: 28px !important; }
   .pd-hero-count { font-size: 48px !important; }
+
+  /* PlantDetail hero action row stacks full-width — destructive button gets thumb-distance from Water-now */
+  .pd-hero-actions { flex-direction: column !important; align-items: stretch !important; gap: 10px !important; }
+  .pd-hero-actions > button { width: 100% !important; min-height: 44px !important; justify-content: center; }
+
+  /* PlantDetail stat grid → single column so "Bright indirect" doesn't wrap awkwardly */
+  .pd-stats { grid-template-columns: 1fr !important; }
+
+  /* Range slider thumb — easier to grab on touch */
+  input[type=range]::-webkit-slider-thumb { width: 28px; height: 28px; }
+  input[type=range]::-moz-range-thumb { width: 28px; height: 28px; border: none; }
 }

@@ -92,7 +92,7 @@ export function PlantDetail() {
             </span>
             <span style={{ fontSize: 14, color: '#9bb98a', maxWidth: 96, lineHeight: 1.2 }}>{sel.bigSub}</span>
           </div>
-          <div style={{ display: 'flex', gap: 10, marginTop: 26 }}>
+          <div className="pd-hero-actions" style={{ display: 'flex', gap: 10, marginTop: 26 }}>
             <button
               type="button"
               onClick={() => water(sel.id)}
@@ -187,7 +187,7 @@ export function PlantDetail() {
 
       <div className="pd-grid" style={{ display: 'grid', gridTemplateColumns: '1.05fr .95fr', gap: 18, marginTop: 18 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div className="pd-stats" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <StatTile label="Light" value={sel.light} />
             <StatTile label="Watering" value={sel.freqLabel} />
             <StatTile label="Last watered" value={sel.lastWateredAgo} />

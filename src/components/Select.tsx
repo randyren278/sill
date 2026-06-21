@@ -155,9 +155,12 @@ export function Select<V extends string | number>({
                   commit(i)
                 }}
                 style={{
-                  padding: '10px 12px',
+                  padding: '12px 14px',
+                  minHeight: 44,
+                  display: 'flex',
+                  alignItems: 'center',
                   borderRadius: radius.popoverRow,
-                  fontSize: 14,
+                  fontSize: 15,
                   color: selected ? colors.onBrand.fg : colors.ink.primary,
                   background: selected ? colors.brand.DEFAULT : active ? colors.surface.muted : 'transparent',
                   cursor: 'pointer',
