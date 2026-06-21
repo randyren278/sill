@@ -42,6 +42,7 @@ export function PlantDetail() {
       </button>
 
       <div
+        className="pd-hero"
         style={{
           display: 'flex',
           background: '#1e3d2f',
@@ -51,7 +52,7 @@ export function PlantDetail() {
           minHeight: 262,
         }}
       >
-        <div style={{ flex: 1, padding: '38px 40px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+        <div className="pd-hero-text" style={{ flex: 1, padding: '38px 40px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
           <div
             style={{
               display: 'flex',
@@ -68,7 +69,7 @@ export function PlantDetail() {
             <StatusDot color={sel.dotColor} />
             {sel.statusLine}
           </div>
-          <div style={{ fontFamily: "'Newsreader', serif", fontSize: 44, lineHeight: 1, letterSpacing: '-.01em' }}>
+          <div className="pd-hero-name" style={{ fontFamily: "'Newsreader', serif", fontSize: 44, lineHeight: 1, letterSpacing: '-.01em' }}>
             {sel.name}
           </div>
           <div
@@ -83,7 +84,7 @@ export function PlantDetail() {
             {sel.latin} · {sel.loc}
           </div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 11, marginTop: 24 }}>
-            <span style={{ fontFamily: "'Newsreader', serif", fontSize: 74, lineHeight: 0.8 }}>
+            <span className="pd-hero-count" style={{ fontFamily: "'Newsreader', serif", fontSize: 74, lineHeight: 0.8 }}>
               <NumberCountUp target={sel.bigNum} />
             </span>
             <span style={{ fontSize: 14, color: '#9bb98a', maxWidth: 96, lineHeight: 1.2 }}>{sel.bigSub}</span>
@@ -129,6 +130,7 @@ export function PlantDetail() {
           </div>
         </div>
         <div
+          className="pd-hero-sprite"
           style={{
             flex: 'none',
             width: 300,
@@ -152,14 +154,15 @@ export function PlantDetail() {
             <PlantSprite
               arch={sel.arch}
               greens={sel.greens}
+              variant={sel.size}
               size={150}
-              style={{ animation: 'floaty 5s ease-in-out infinite' }}
+              className="sway-on-mount pd-sprite"
             />
           </div>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1.05fr .95fr', gap: 18, marginTop: 18 }}>
+      <div className="pd-grid" style={{ display: 'grid', gridTemplateColumns: '1.05fr .95fr', gap: 18, marginTop: 18 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <StatTile label="Light" value={sel.light} />

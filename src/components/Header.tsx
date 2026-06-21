@@ -33,6 +33,7 @@ export function Header() {
             Sill
           </div>
           <div
+            className="hdr-subtitle"
             style={{
               fontFamily: "ui-monospace, 'SF Mono', Menlo, monospace",
               fontSize: 9.5,
@@ -46,9 +47,10 @@ export function Header() {
           </div>
         </div>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div className="hdr-actions" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <button
           onClick={() => navigate('/')}
+          className="hdr-btn"
           style={{
             border: 'none',
             cursor: 'pointer',
@@ -65,6 +67,7 @@ export function Header() {
         </button>
         <button
           onClick={() => navigate('/calendar')}
+          className="hdr-btn"
           style={{
             border: 'none',
             cursor: 'pointer',
@@ -81,7 +84,7 @@ export function Header() {
         </button>
         <button
           onClick={() => navigate('/plants/new')}
-          className="hov-tile"
+          className="hdr-btn hov-tile"
           style={{
             border: 'none',
             cursor: 'pointer',
@@ -98,7 +101,7 @@ export function Header() {
           }}
         >
           <span style={{ fontSize: 16, lineHeight: 1, marginTop: -1 }}>＋</span>
-          Add plant
+          <span className="hdr-add-label">Add plant</span>
         </button>
       </div>
     </header>

@@ -1,7 +1,8 @@
-// TODAY is hard-coded by design. The default plants in lib/defaults.ts are
-// calibrated to this date so the first impression matches the artifact.
-// Switching to live time would also require regenerating defaultPlants offsets.
-export const TODAY = '2026-06-19'
+function todayIso(): string {
+  const d = new Date()
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')
+}
+export const TODAY = todayIso()
 
 export const MS = 86400000
 export const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']

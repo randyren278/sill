@@ -2,9 +2,9 @@ import { useMemo, useState, type ChangeEvent } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { usePlants } from '../data/PlantsProvider'
 import { TODAY } from '../lib/dates'
-import { LIGHT_OPTIONS, SPECIES } from '../lib/species'
+import { LIGHT_OPTIONS, SIZE_OPTIONS, SPECIES } from '../lib/species'
 import { PlantSprite } from '../components/PlantSprite'
-import type { Plant } from '../data/types'
+import type { Plant, SizeKey } from '../data/types'
 
 type FormState = {
   name: string
@@ -12,12 +12,13 @@ type FormState = {
   speciesIdx: number
   light: string
   freq: number
+  size: SizeKey
   lastWatered: string
 }
 
 function freshForm(): FormState {
   const sp = SPECIES[0]
-  return { name: '', loc: '', speciesIdx: 0, light: sp.light, freq: sp.freq, lastWatered: TODAY }
+  return { name: '', loc: '', speciesIdx: 0, light: sp.light, freq: sp.freq, size: sp.size, lastWatered: TODAY }
 }
 
 function formFromPlant(p: Plant): FormState {
@@ -29,6 +30,7 @@ function formFromPlant(p: Plant): FormState {
     speciesIdx: idx,
     light: p.light,
     freq: p.freqDays,
+    size: p.size,
     lastWatered: p.lastWatered,
   }
 }
@@ -84,7 +86,7 @@ function PlantFormInner({ mode, editing, upsert, navigate }: FormInnerProps) {
   const onSpecies = (e: ChangeEvent<HTMLSelectElement>) => {
     const i = Number(e.target.value)
     const next = SPECIES[i]
-    setForm((f) => ({ ...f, speciesIdx: i, light: next.light, freq: next.freq }))
+    setForm((f) => ({ ...f, speciesIdx: i, light: next.light, freq: next.freq, size: next.size }))
   }
 
   const onSave = async () => {
@@ -100,6 +102,7 @@ function PlantFormInner({ mode, editing, upsert, navigate }: FormInnerProps) {
         freqDays: form.freq,
         arch: sp.arch,
         greens: sp.greens,
+        size: form.size,
         fact: sp.fact,
         lastWatered: form.lastWatered,
       }
@@ -116,6 +119,7 @@ function PlantFormInner({ mode, editing, upsert, navigate }: FormInnerProps) {
         freqDays: form.freq,
         arch: sp.arch,
         greens: sp.greens,
+        size: form.size,
         fact: sp.fact,
         lastWatered: form.lastWatered,
         history: [form.lastWatered],
@@ -151,8 +155,8 @@ function PlantFormInner({ mode, editing, upsert, navigate }: FormInnerProps) {
         {title}
       </div>
 
-      <div style={{ display: 'flex', gap: 26, alignItems: 'flex-start' }}>
-        <div style={{ flex: 'none', width: 172 }}>
+      <div className="pf-wrap" style={{ display: 'flex', gap: 26, alignItems: 'flex-start' }}>
+        <div className="pf-sprite" style={{ flex: 'none', width: 172 }}>
           <div
             style={{
               width: 172,
@@ -167,9 +171,10 @@ function PlantFormInner({ mode, editing, upsert, navigate }: FormInnerProps) {
             }}
           >
             <PlantSprite
-              key={sp.arch + '|' + sp.greens}
+              key={sp.arch + '|' + form.size + '|' + sp.greens}
               arch={sp.arch}
               greens={sp.greens}
+              variant={form.size}
               size={128}
               style={{ animation: 'popIn .4s both' }}
             />
@@ -196,7 +201,7 @@ function PlantFormInner({ mode, editing, upsert, navigate }: FormInnerProps) {
               style={inputStyle}
             />
           </Field>
-          <div style={{ display: 'flex', gap: 14 }}>
+          <div className="pf-pair" style={{ display: 'flex', gap: 14 }}>
             <Field label="Species" style={{ flex: 1 }}>
               <select value={form.speciesIdx} onChange={onSpecies} style={{ ...inputStyle, cursor: 'pointer' }}>
                 {speciesOptions.map((o) => (
@@ -215,7 +220,7 @@ function PlantFormInner({ mode, editing, upsert, navigate }: FormInnerProps) {
               />
             </Field>
           </div>
-          <div style={{ display: 'flex', gap: 14 }}>
+          <div className="pf-pair" style={{ display: 'flex', gap: 14 }}>
             <Field label="Light" style={{ flex: 1 }}>
               <select
                 value={form.light}
@@ -225,6 +230,19 @@ function PlantFormInner({ mode, editing, upsert, navigate }: FormInnerProps) {
                 {LIGHT_OPTIONS.map((l) => (
                   <option key={l} value={l}>
                     {l}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Size" style={{ flex: 1 }}>
+              <select
+                value={form.size}
+                onChange={(e) => setForm((f) => ({ ...f, size: e.target.value as SizeKey }))}
+                style={{ ...inputStyle, cursor: 'pointer' }}
+              >
+                {SIZE_OPTIONS.map((s) => (
+                  <option key={s.value} value={s.value}>
+                    {s.label}
                   </option>
                 ))}
               </select>
@@ -263,7 +281,7 @@ function PlantFormInner({ mode, editing, upsert, navigate }: FormInnerProps) {
               style={{ width: '100%' }}
             />
           </div>
-          <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
+          <div className="pf-actions" style={{ display: 'flex', gap: 10, marginTop: 6 }}>
             <button
               onClick={onSave}
               className="hov-tile"

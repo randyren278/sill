@@ -24,6 +24,7 @@ export function Calendar() {
         name: d.name,
         arch: d.arch,
         greens: d.greens,
+        size: d.size,
         dateFmt: d.nextDueFmt,
         color: d.statusColor,
         rel:
@@ -51,7 +52,7 @@ export function Calendar() {
           >
             Watering schedule
           </div>
-          <div style={{ fontFamily: "'Newsreader', serif", fontSize: 48, lineHeight: 1, letterSpacing: '-.02em' }}>
+          <div className="cal-month" style={{ fontFamily: "'Newsreader', serif", fontSize: 48, lineHeight: 1, letterSpacing: '-.02em' }}>
             {cal.monthLabel}
           </div>
         </div>
@@ -61,7 +62,7 @@ export function Calendar() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1.55fr .9fr', gap: 22, alignItems: 'start' }}>
+      <div className="cal-wrap" style={{ display: 'grid', gridTemplateColumns: '1.55fr .9fr', gap: 22, alignItems: 'start' }}>
         <div
           style={{
             background: '#fbfaf5',
@@ -70,7 +71,7 @@ export function Calendar() {
             padding: 22,
           }}
         >
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 6, marginBottom: 10 }}>
+          <div className="cal-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 6, marginBottom: 10 }}>
             {WEEKDAYS.map((w) => (
               <div
                 key={w}
@@ -87,10 +88,11 @@ export function Calendar() {
               </div>
             ))}
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 6 }}>
+          <div className="cal-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 6 }}>
             {cal.cells.map((c, i) => (
               <div
                 key={i}
+                className="cal-cell"
                 style={{
                   aspectRatio: '1',
                   borderRadius: 12,
@@ -116,6 +118,7 @@ export function Calendar() {
             ))}
           </div>
           <div
+            className="cal-legend"
             style={{
               display: 'flex',
               gap: 20,
@@ -174,7 +177,7 @@ export function Calendar() {
                     overflow: 'hidden',
                   }}
                 >
-                  <PlantSprite arch={u.arch} greens={u.greens} size={38} />
+                  <PlantSprite arch={u.arch} greens={u.greens} variant={u.size} size={38} />
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontFamily: "'Newsreader', serif", fontSize: 17, lineHeight: 1.05 }}>{u.name}</div>
@@ -201,8 +204,8 @@ function NavButton({ onClick, children }: { onClick: () => void; children: React
         border: '1px solid #e6e3d7',
         background: '#fbfaf5',
         cursor: 'pointer',
-        width: 42,
-        height: 42,
+        width: 44,
+        height: 44,
         borderRadius: '50%',
         fontSize: 18,
         color: '#1b211c',

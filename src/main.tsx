@@ -4,11 +4,11 @@ import { RouterProvider } from 'react-router-dom'
 import './index.css'
 import { router } from './routes'
 import { PlantsProvider } from './data/PlantsProvider'
-import { localStorageRepo } from './data/localStorageRepo'
+import { supabasePlantsRepo } from './data/supabasePlantsRepo'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <PlantsProvider repo={localStorageRepo}>
+    <PlantsProvider repo={supabasePlantsRepo}>
       <RouterProvider router={router} />
     </PlantsProvider>
   </StrictMode>,

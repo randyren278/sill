@@ -6,7 +6,15 @@ import { MeterBar } from '../components/MeterBar'
 import { NumberCountUp } from '../components/NumberCountUp'
 import { PlantSprite } from '../components/PlantSprite'
 
-const TODAY_LABEL = 'Friday · 19 June 2026'
+function todayLabel(): string {
+  const d = new Date()
+  const weekday = d.toLocaleDateString('en-GB', { weekday: 'long' })
+  const day = d.getDate()
+  const month = d.toLocaleDateString('en-GB', { month: 'long' })
+  const year = d.getFullYear()
+  return weekday + ' · ' + day + ' ' + month + ' ' + year
+}
+const TODAY_LABEL = todayLabel()
 
 type Filter = 'all' | 'thirsty'
 
@@ -23,7 +31,7 @@ export function Dashboard() {
 
   return (
     <div className="fade-up">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', margin: '24px 0 26px' }}>
+      <div className="dash-hero" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', margin: '24px 0 26px' }}>
         <div>
           <div
             style={{
@@ -37,11 +45,11 @@ export function Dashboard() {
           >
             {TODAY_LABEL}
           </div>
-          <div style={{ fontFamily: "'Newsreader', serif", fontSize: 48, lineHeight: 1, letterSpacing: '-.02em' }}>
+          <div className="dash-hero-title" style={{ fontFamily: "'Newsreader', serif", fontSize: 48, lineHeight: 1, letterSpacing: '-.02em' }}>
             My plants
           </div>
         </div>
-        <div style={{ textAlign: 'right' }}>
+        <div className="dash-hero-stats" style={{ textAlign: 'right' }}>
           <div style={{ fontFamily: "'Newsreader', serif", fontSize: 34, lineHeight: 1, color: '#b5613a' }}>
             <NumberCountUp target={thirstyCount} />
           </div>
@@ -51,7 +59,7 @@ export function Dashboard() {
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 8, marginBottom: 22 }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 22, flexWrap: 'wrap' }}>
         <FilterButton active={filter === 'all'} onClick={() => setFilter('all')}>
           All plants
         </FilterButton>
@@ -95,7 +103,7 @@ function PlantRow({ plant }: { plant: DerivedPlant }) {
   return (
     <div
       onClick={() => navigate('/plants/' + plant.id)}
-      className="hov-row"
+      className="plant-row hov-row"
       style={{
         display: 'flex',
         alignItems: 'center',
@@ -121,10 +129,10 @@ function PlantRow({ plant }: { plant: DerivedPlant }) {
           overflow: 'hidden',
         }}
       >
-        <PlantSprite arch={plant.arch} greens={plant.greens} size={62} />
+        <PlantSprite arch={plant.arch} greens={plant.greens} variant={plant.size} size={62} />
       </div>
-      <div style={{ flex: 'none', width: 184 }}>
-        <div style={{ fontFamily: "'Newsreader', serif", fontSize: 23, lineHeight: 1.02 }}>{plant.name}</div>
+      <div className="plant-row-name" style={{ flex: 'none', width: 184 }}>
+        <div className="pr-name" style={{ fontFamily: "'Newsreader', serif", fontSize: 23, lineHeight: 1.02 }}>{plant.name}</div>
         <div
           style={{
             fontFamily: "'Newsreader', serif",
@@ -148,7 +156,7 @@ function PlantRow({ plant }: { plant: DerivedPlant }) {
           {plant.loc}
         </div>
       </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div className="plant-row-meter" style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
           <span
             style={{
@@ -168,8 +176,9 @@ function PlantRow({ plant }: { plant: DerivedPlant }) {
           Last watered {plant.lastWateredAgo}
         </div>
       </div>
-      <div style={{ flex: 'none', width: 96, textAlign: 'right' }}>
+      <div className="plant-row-big" style={{ flex: 'none', width: 96, textAlign: 'right' }}>
         <div
+          className="pr-big"
           style={{
             fontFamily: "'Newsreader', serif",
             fontSize: 46,

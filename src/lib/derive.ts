@@ -113,8 +113,8 @@ export function derive(p: Plant, revealed: boolean): DerivedPlant {
     freqLabel: 'Every ' + p.freqDays + ' days',
     lastWateredAgo: since === 0 ? 'today' : since + ' days ago',
     nextDueFmt: fmt(nextDue),
-    iconUrl: icon(p.arch, p.greens),
-    iconBg: bg(p.arch, p.greens),
+    iconUrl: icon(p.arch, p.greens, p.size),
+    iconBg: bg(p.arch, p.greens, p.size),
     historyDerived,
   }
 }

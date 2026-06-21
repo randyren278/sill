@@ -33,6 +33,23 @@ body {
   to   { opacity: 1; transform: scale(1); }
 }
 
+@keyframes sway {
+  0%   { transform: rotate(0deg); }
+  18%  { transform: rotate(4deg); }
+  46%  { transform: rotate(-4deg); }
+  72%  { transform: rotate(2.5deg); }
+  100% { transform: rotate(0deg); }
+}
+
+.sway-on-mount {
+  animation: sway 1.1s cubic-bezier(.45, .05, .55, .95) both;
+  transform-origin: 50% 90%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sway-on-mount { animation: none; }
+}
+
 .pix {
   image-rendering: pixelated;
   image-rendering: crisp-edges;
@@ -84,3 +101,69 @@ input[type=range] {
   box-shadow: -5px 10px 22px rgba(30, 61, 47, .09);
 }
 .hov-cal-nav:hover { background: #1e3d2f; color: #eef0e4; }
+
+/* ───── Mobile foundations + single-breakpoint layout ───── */
+
+html, body { overflow-x: hidden; }
+button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+
+/* Hover effects only on devices that actually hover (no sticky-tap on touch). */
+@media (hover: none) {
+  .hov-row:hover, .hov-tile:hover, .hov-scale:hover,
+  .hov-darken:hover, .hov-gap:hover, .hov-roster:hover,
+  .hov-cal-nav:hover {
+    transform: none !important;
+    box-shadow: none !important;
+    background: revert;
+    color: revert;
+    border-color: revert;
+    gap: revert;
+  }
+}
+
+@media (max-width: 720px) {
+  /* App shell */
+  .app-container { padding: 0 16px 64px !important; }
+
+  /* Header — drop subtitle and "Add plant" label, shrink button padding */
+  .hdr-subtitle, .hdr-add-label { display: none; }
+  .hdr-btn { padding: 8px 11px !important; font-size: 12px !important; }
+  .hdr-actions { gap: 4px !important; }
+
+  /* Dashboard hero stacks vertically */
+  .dash-hero { flex-direction: column; align-items: flex-start !important; gap: 12px !important; }
+  .dash-hero-stats { text-align: left !important; }
+  .dash-hero-title { font-size: 36px !important; }
+
+  /* Plant rows: sprite + name on row 1, big-num on row 1 (right), meter spans full width row 2 */
+  .plant-row { flex-wrap: wrap; gap: 14px !important; padding: 14px 16px !important; }
+  .plant-row-name { width: auto !important; flex: 1 1 auto !important; min-width: 0; }
+  .plant-row-name .pr-name { font-size: 19px !important; }
+  .plant-row-big { width: auto !important; flex: 0 0 auto !important; order: 2; }
+  .plant-row-big .pr-big { font-size: 36px !important; }
+  .plant-row-meter { flex: 0 0 100% !important; order: 3; }
+
+  /* PlantDetail hero stacks vertically */
+  .pd-hero { flex-direction: column; }
+  .pd-hero-text { padding: 24px 22px !important; }
+  .pd-hero-name { font-size: 32px !important; }
+  .pd-hero-count { font-size: 56px !important; }
+  .pd-hero-sprite { width: 100% !important; padding: 24px 0 !important; }
+
+  /* PlantDetail outer 2-col grid collapses to one column */
+  .pd-grid { grid-template-columns: 1fr !important; }
+
+  /* PlantForm: sprite centered above stacked form, paired fields stack, full-width buttons */
+  .pf-wrap { flex-direction: column; align-items: stretch !important; }
+  .pf-sprite { align-self: center; }
+  .pf-pair { flex-direction: column !important; }
+  .pf-actions { flex-direction: column; }
+  .pf-actions > button { width: 100%; }
+
+  /* Calendar: grid full-width, sidebar below; tighter cells */
+  .cal-wrap { grid-template-columns: 1fr !important; }
+  .cal-month { font-size: 36px !important; }
+  .cal-grid { gap: 4px !important; }
+  .cal-cell { padding: 4px 5px !important; min-height: 36px; }
+  .cal-legend { flex-wrap: wrap; gap: 12px !important; }
+}

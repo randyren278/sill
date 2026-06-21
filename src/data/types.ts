@@ -1,5 +1,6 @@
 export type ArchKey = 'broad' | 'cane' | 'trail' | 'succ' | 'fan'
 export type GreensKey = 'forest' | 'deep' | 'bright' | 'jade'
+export type SizeKey = 'xs' | 'sm' | 'md' | 'lg' | 'xl'
 
 export type Plant = {
   id: string
@@ -11,6 +12,7 @@ export type Plant = {
   freqDays: number
   arch: ArchKey
   greens: GreensKey
+  size: SizeKey
   fact: string
   lastWatered: string  // 'YYYY-MM-DD'
   history: string[]    // 'YYYY-MM-DD' descending
@@ -21,6 +23,7 @@ export type Species = {
   latin: string
   arch: ArchKey
   greens: GreensKey
+  size: SizeKey
   light: string
   freq: number
   fact: string
