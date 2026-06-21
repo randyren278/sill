@@ -105,14 +105,15 @@ export function DatePicker({ value, onChange, ariaLabel }: Props) {
           style={{
             position: 'absolute',
             top: 'calc(100% + 6px)',
-            left: 0,
+            right: 0,
             zIndex: 100,
             background: colors.surface.DEFAULT,
             border: `1px solid ${colors.border.DEFAULT}`,
             borderRadius: radius.cardSm,
             boxShadow: `0 14px 34px ${colors.elevation[2]}`,
             padding: 14,
-            width: 280,
+            width: 300,
+            maxWidth: 'calc(100vw - 24px)',
           }}
         >
           {/* Month nav */}
@@ -131,10 +132,10 @@ export function DatePicker({ value, onChange, ariaLabel }: Props) {
                 style={{
                   textAlign: 'center',
                   fontFamily: type.eyebrow.fontFamily,
-                  fontSize: 9.5,
+                  fontSize: 11,
                   letterSpacing: '.08em',
                   textTransform: 'uppercase',
-                  color: colors.ink.faint,
+                  color: colors.ink.muted,
                   padding: '4px 0',
                 }}
               >
@@ -155,10 +156,11 @@ export function DatePicker({ value, onChange, ariaLabel }: Props) {
                   onClick={() => { onChange(c.iso); setOpen(false) }}
                   style={{
                     aspectRatio: '1',
+                    minHeight: 36,
                     borderRadius: radius.popoverRow,
                     border: 'none',
                     cursor: 'pointer',
-                    fontSize: 13,
+                    fontSize: 14,
                     fontFamily: 'inherit',
                     background: selected ? colors.brand.DEFAULT : isToday ? colors.surface.lo : 'transparent',
                     color: selected ? colors.onBrand.fg : colors.ink.primary,
@@ -184,13 +186,13 @@ function NavBtn({ onClick, children, ...rest }: { onClick: () => void; children:
       onClick={onClick}
       {...rest}
       style={{
-        width: 30,
-        height: 30,
+        width: 40,
+        height: 40,
         borderRadius: radius.pill,
         border: `1px solid ${colors.border.DEFAULT}`,
         background: colors.surface.DEFAULT,
         cursor: 'pointer',
-        fontSize: 14,
+        fontSize: 16,
         color: colors.ink.primary,
         fontFamily: 'inherit',
         display: 'inline-flex',
