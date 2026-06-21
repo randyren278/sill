@@ -5,6 +5,7 @@ import { derive, type DerivedPlant } from '../lib/derive'
 import { MeterBar } from '../components/MeterBar'
 import { NumberCountUp } from '../components/NumberCountUp'
 import { PlantSprite } from '../components/PlantSprite'
+import { button, radius, type } from '../lib/tokens'
 
 function todayLabel(): string {
   const d = new Date()
@@ -80,17 +81,18 @@ export function Dashboard() {
 function FilterButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button
+      type="button"
       onClick={onClick}
       style={{
-        border: '1px solid #e6e3d7',
+        border: active ? button.chip.borderActive : button.chip.borderInactive,
         cursor: 'pointer',
-        fontSize: 12.5,
-        fontWeight: 600,
-        padding: '7px 16px',
-        borderRadius: 999,
+        fontSize: button.chip.fontSize,
+        fontWeight: type.weight.semibold,
+        padding: button.chip.padding,
+        borderRadius: radius.pill,
         transition: 'all .25s',
-        background: active ? '#1e3d2f' : '#fbfaf5',
-        color: active ? '#eef0e4' : '#6b736a',
+        background: active ? button.chip.backgroundActive : button.chip.backgroundInactive,
+        color: active ? button.chip.colorActive : button.chip.colorInactive,
       }}
     >
       {children}

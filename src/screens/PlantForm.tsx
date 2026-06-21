@@ -1,9 +1,12 @@
-import { useMemo, useState, type ChangeEvent } from 'react'
+import { useMemo, useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { usePlants } from '../data/PlantsProvider'
 import { TODAY } from '../lib/dates'
 import { LIGHT_OPTIONS, SIZE_OPTIONS, SPECIES } from '../lib/species'
 import { PlantSprite } from '../components/PlantSprite'
+import { Select } from '../components/Select'
+import { DatePicker } from '../components/DatePicker'
+import { button, colors, radius, type } from '../lib/tokens'
 import type { Plant, SizeKey } from '../data/types'
 
 type FormState = {
@@ -83,8 +86,7 @@ function PlantFormInner({ mode, editing, upsert, navigate }: FormInnerProps) {
     else navigate('/')
   }
 
-  const onSpecies = (e: ChangeEvent<HTMLSelectElement>) => {
-    const i = Number(e.target.value)
+  const onSpecies = (i: number) => {
     const next = SPECIES[i]
     setForm((f) => ({ ...f, speciesIdx: i, light: next.light, freq: next.freq, size: next.size }))
   }
@@ -203,13 +205,12 @@ function PlantFormInner({ mode, editing, upsert, navigate }: FormInnerProps) {
           </Field>
           <div className="pf-pair" style={{ display: 'flex', gap: 14 }}>
             <Field label="Species" style={{ flex: 1 }}>
-              <select value={form.speciesIdx} onChange={onSpecies} style={{ ...inputStyle, cursor: 'pointer' }}>
-                {speciesOptions.map((o) => (
-                  <option key={o.idx} value={o.idx}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
+              <Select
+                value={form.speciesIdx}
+                onChange={onSpecies}
+                options={speciesOptions.map((o) => ({ value: o.idx, label: o.label }))}
+                ariaLabel="Species"
+              />
             </Field>
             <Field label="Location" style={{ flex: 1 }}>
               <input
@@ -222,37 +223,26 @@ function PlantFormInner({ mode, editing, upsert, navigate }: FormInnerProps) {
           </div>
           <div className="pf-pair" style={{ display: 'flex', gap: 14 }}>
             <Field label="Light" style={{ flex: 1 }}>
-              <select
+              <Select
                 value={form.light}
-                onChange={(e) => setForm((f) => ({ ...f, light: e.target.value }))}
-                style={{ ...inputStyle, cursor: 'pointer' }}
-              >
-                {LIGHT_OPTIONS.map((l) => (
-                  <option key={l} value={l}>
-                    {l}
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => setForm((f) => ({ ...f, light: v }))}
+                options={LIGHT_OPTIONS.map((l) => ({ value: l, label: l }))}
+                ariaLabel="Light"
+              />
             </Field>
             <Field label="Size" style={{ flex: 1 }}>
-              <select
+              <Select<SizeKey>
                 value={form.size}
-                onChange={(e) => setForm((f) => ({ ...f, size: e.target.value as SizeKey }))}
-                style={{ ...inputStyle, cursor: 'pointer' }}
-              >
-                {SIZE_OPTIONS.map((s) => (
-                  <option key={s.value} value={s.value}>
-                    {s.label}
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => setForm((f) => ({ ...f, size: v }))}
+                options={SIZE_OPTIONS.map((s) => ({ value: s.value, label: s.label }))}
+                ariaLabel="Size"
+              />
             </Field>
             <Field label="Last watered" style={{ flex: 1 }}>
-              <input
-                type="date"
+              <DatePicker
                 value={form.lastWatered}
-                onChange={(e) => setForm((f) => ({ ...f, lastWatered: e.target.value }))}
-                style={{ ...inputStyle, padding: '12px 15px' }}
+                onChange={(v) => setForm((f) => ({ ...f, lastWatered: v }))}
+                ariaLabel="Last watered"
               />
             </Field>
           </div>
@@ -283,33 +273,35 @@ function PlantFormInner({ mode, editing, upsert, navigate }: FormInnerProps) {
           </div>
           <div className="pf-actions" style={{ display: 'flex', gap: 10, marginTop: 6 }}>
             <button
+              type="button"
               onClick={onSave}
               className="hov-tile"
               style={{
-                border: 'none',
+                border: button.primary.border,
                 cursor: 'pointer',
-                background: '#1e3d2f',
-                color: '#eef0e4',
-                fontWeight: 600,
-                fontSize: 14.5,
-                padding: '13px 28px',
-                borderRadius: 999,
+                background: button.primary.background,
+                color: button.primary.color,
+                fontWeight: type.weight.semibold,
+                fontSize: button.primary.fontSize,
+                padding: button.primary.padding,
+                borderRadius: radius.pill,
                 transition: 'transform .25s',
               }}
             >
               {saveLabel}
             </button>
             <button
+              type="button"
               onClick={onCancel}
               style={{
-                border: '1px solid #e0ddce',
+                border: button.ghostOutline.border,
                 cursor: 'pointer',
-                background: 'transparent',
-                color: '#6b736a',
-                fontWeight: 600,
-                fontSize: 14.5,
-                padding: '13px 24px',
-                borderRadius: 999,
+                background: button.ghostOutline.background,
+                color: button.ghostOutline.color,
+                fontWeight: type.weight.semibold,
+                fontSize: button.ghostOutline.fontSize,
+                padding: button.ghostOutline.padding,
+                borderRadius: radius.pill,
               }}
             >
               Cancel
@@ -323,13 +315,13 @@ function PlantFormInner({ mode, editing, upsert, navigate }: FormInnerProps) {
 
 const inputStyle = {
   width: '100%',
-  fontSize: 15,
+  fontSize: type.body.fontSize,
   padding: '13px 15px',
-  borderRadius: 13,
-  border: '1px solid #e0ddce',
-  background: '#fbfaf5',
-  color: '#1b211c',
-  transition: 'all .2s',
+  borderRadius: radius.input,
+  border: `1px solid ${colors.border.DEFAULT}`,
+  background: colors.surface.DEFAULT,
+  color: colors.ink.primary,
+  transition: 'border-color .2s, box-shadow .2s',
 } as const
 
 function Field({

@@ -6,6 +6,7 @@ import { MeterBar } from '../components/MeterBar'
 import { NumberCountUp } from '../components/NumberCountUp'
 import { PlantSprite } from '../components/PlantSprite'
 import { StatusDot } from '../components/StatusDot'
+import { button, radius, type } from '../lib/tokens'
 
 export function PlantDetail() {
   const { id } = useParams<{ id: string }>()
@@ -91,17 +92,18 @@ export function PlantDetail() {
           </div>
           <div style={{ display: 'flex', gap: 10, marginTop: 26 }}>
             <button
+              type="button"
               onClick={() => water(sel.id)}
               className="hov-scale"
               style={{
-                border: 'none',
+                border: button.primaryInverse.border,
                 cursor: 'pointer',
-                background: '#eef0e4',
-                color: '#1e3d2f',
-                fontWeight: 600,
-                fontSize: 14,
-                padding: '12px 22px',
-                borderRadius: 999,
+                background: button.primaryInverse.background,
+                color: button.primaryInverse.color,
+                fontWeight: type.weight.semibold,
+                fontSize: button.primaryInverse.fontSize,
+                padding: button.primaryInverse.padding,
+                borderRadius: radius.pill,
                 display: 'flex',
                 alignItems: 'center',
                 gap: 7,
@@ -111,17 +113,18 @@ export function PlantDetail() {
               💧 Water now
             </button>
             <button
+              type="button"
               onClick={() => navigate('/plants/' + sel.id + '/edit')}
               className="hov-darken"
               style={{
-                border: '1px solid rgba(238,240,228,.35)',
+                border: button.ghostOutlineInverse.border,
                 cursor: 'pointer',
-                background: 'transparent',
-                color: '#eef0e4',
-                fontWeight: 600,
-                fontSize: 14,
-                padding: '12px 22px',
-                borderRadius: 999,
+                background: button.ghostOutlineInverse.background,
+                color: button.ghostOutlineInverse.color,
+                fontWeight: type.weight.semibold,
+                fontSize: button.ghostOutlineInverse.fontSize,
+                padding: button.ghostOutlineInverse.padding,
+                borderRadius: radius.pill,
                 transition: 'background .25s',
               }}
             >

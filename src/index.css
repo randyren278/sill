@@ -72,6 +72,18 @@ select:focus {
   box-shadow: 0 0 0 3px rgba(63, 107, 74, .14);
 }
 
+button:focus-visible {
+  outline: 2px solid #3f6b4a;
+  outline-offset: 2px;
+  border-radius: 999px;
+}
+
+/* Tap target floor for chip-style buttons on touch devices */
+.chip {
+  min-width: 44px;
+  min-height: 36px;
+}
+
 input[type=range] {
   accent-color: #3f6b4a;
 }

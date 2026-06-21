@@ -1,5 +1,6 @@
 import { useLocation, useNavigate } from 'react-router-dom'
 import { PlantSprite } from './PlantSprite'
+import { button, colors, radius, type } from '../lib/tokens'
 
 export function Header() {
   const location = useLocation()
@@ -19,7 +20,7 @@ export function Header() {
         alignItems: 'center',
         justifyContent: 'space-between',
         padding: '22px 0 18px',
-        background: 'linear-gradient(#f3f1e9 78%, rgba(243,241,233,0))',
+        background: `linear-gradient(${colors.canvas} 78%, rgba(243,241,233,0))`,
         marginBottom: 8,
       }}
     >
@@ -29,7 +30,7 @@ export function Header() {
       >
         <PlantSprite arch="broad" greens="forest" size={34} />
         <div>
-          <div style={{ fontFamily: "'Newsreader', serif", fontSize: 23, lineHeight: 0.95, letterSpacing: '-.01em' }}>
+          <div style={{ fontFamily: type.sectionTitle.fontFamily, fontSize: 23, lineHeight: 0.95, letterSpacing: '-.01em' }}>
             Sill
           </div>
           <div
@@ -39,7 +40,7 @@ export function Header() {
               fontSize: 9.5,
               letterSpacing: '.22em',
               textTransform: 'uppercase',
-              color: '#9aa093',
+              color: colors.ink.faint,
               marginTop: 1,
             }}
           >
@@ -49,51 +50,54 @@ export function Header() {
       </div>
       <div className="hdr-actions" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <button
+          type="button"
           onClick={() => navigate('/')}
           className="hdr-btn"
           style={{
             border: 'none',
             cursor: 'pointer',
-            fontSize: 13.5,
-            fontWeight: 600,
-            padding: '9px 18px',
-            borderRadius: 999,
+            fontSize: button.navTab.fontSize,
+            fontWeight: type.weight.semibold,
+            padding: button.navTab.padding,
+            borderRadius: radius.pill,
             transition: 'all .25s',
-            background: onPlants ? '#1e3d2f' : 'transparent',
-            color: onPlants ? '#eef0e4' : '#6b736a',
+            background: onPlants ? button.navTab.backgroundActive : button.navTab.backgroundInactive,
+            color: onPlants ? button.navTab.colorActive : button.navTab.colorInactive,
           }}
         >
           Plants
         </button>
         <button
+          type="button"
           onClick={() => navigate('/calendar')}
           className="hdr-btn"
           style={{
             border: 'none',
             cursor: 'pointer',
-            fontSize: 13.5,
-            fontWeight: 600,
-            padding: '9px 18px',
-            borderRadius: 999,
+            fontSize: button.navTab.fontSize,
+            fontWeight: type.weight.semibold,
+            padding: button.navTab.padding,
+            borderRadius: radius.pill,
             transition: 'all .25s',
-            background: onCalendar ? '#1e3d2f' : 'transparent',
-            color: onCalendar ? '#eef0e4' : '#6b736a',
+            background: onCalendar ? button.navTab.backgroundActive : button.navTab.backgroundInactive,
+            color: onCalendar ? button.navTab.colorActive : button.navTab.colorInactive,
           }}
         >
           Calendar
         </button>
         <button
+          type="button"
           onClick={() => navigate('/plants/new')}
           className="hdr-btn hov-tile"
           style={{
             border: 'none',
             cursor: 'pointer',
-            fontSize: 13.5,
-            fontWeight: 600,
-            padding: '9px 18px 9px 15px',
-            borderRadius: 999,
-            background: '#1e3d2f',
-            color: '#eef0e4',
+            fontSize: button.navCta.fontSize,
+            fontWeight: type.weight.semibold,
+            padding: button.navCta.paddingWithLeadingIcon,
+            borderRadius: radius.pill,
+            background: button.navCta.background,
+            color: button.navCta.color,
             display: 'flex',
             alignItems: 'center',
             gap: 6,

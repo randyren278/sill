@@ -4,6 +4,7 @@ import { usePlants } from '../data/PlantsProvider'
 import { buildCalendar } from '../lib/calendar'
 import { derive } from '../lib/derive'
 import { PlantSprite } from '../components/PlantSprite'
+import { button, radius, type } from '../lib/tokens'
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
@@ -198,17 +199,20 @@ export function Calendar() {
 function NavButton({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
   return (
     <button
+      type="button"
       onClick={onClick}
-      className="hov-cal-nav"
+      className="hov-cal-nav chip"
       style={{
-        border: '1px solid #e6e3d7',
-        background: '#fbfaf5',
+        border: button.pager.border,
+        background: button.pager.background,
         cursor: 'pointer',
-        width: 44,
-        height: 44,
-        borderRadius: '50%',
-        fontSize: 18,
-        color: '#1b211c',
+        minWidth: button.pager.minWidth,
+        height: button.pager.height,
+        padding: button.pager.padding,
+        borderRadius: radius.pill,
+        fontSize: button.pager.iconGlyphSize,
+        fontWeight: type.weight.semibold,
+        color: button.pager.color,
         transition: 'all .25s',
       }}
     >
