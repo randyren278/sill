@@ -26,6 +26,7 @@ export function Calendar() {
         arch: d.arch,
         greens: d.greens,
         size: d.size,
+        health: d.health,
         dateFmt: d.nextDueFmt,
         color: d.statusColor,
         rel:
@@ -178,7 +179,7 @@ export function Calendar() {
                     overflow: 'hidden',
                   }}
                 >
-                  <PlantSprite arch={u.arch} greens={u.greens} variant={u.size} size={38} />
+                  <PlantSprite arch={u.arch} greens={u.greens} variant={u.size} size={38} health={u.health} />
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontFamily: "'Newsreader', serif", fontSize: 17, lineHeight: 1.05 }}>{u.name}</div>

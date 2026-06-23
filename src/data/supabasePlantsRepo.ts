@@ -1,4 +1,4 @@
-import type { Plant, ArchKey, GreensKey, SizeKey } from './types'
+import type { Plant, HistoryEntry, ArchKey, GreensKey, SizeKey } from './types'
 import type { PlantsRepo } from './repo'
 import { supabase } from './supabaseClient'
 
@@ -15,9 +15,26 @@ type Row = {
   greens: GreensKey
   size: SizeKey
   fact: string
+  notes?: string
   last_watered: string
-  history: string[]
+  history: unknown[]   // tolerate legacy string[] during the migration window
   created_at?: string
+}
+
+/** Tolerates legacy string history entries during the migration deploy window. */
+function normalizeHistory(raw: unknown): HistoryEntry[] {
+  if (!Array.isArray(raw)) return []
+  return raw
+    .map((e): HistoryEntry | null => {
+      if (typeof e === 'string') return { date: e }
+      if (e && typeof e === 'object' && typeof (e as { date?: unknown }).date === 'string') {
+        const obj = e as { date: string; daysLate?: unknown }
+        const daysLate = typeof obj.daysLate === 'number' && obj.daysLate > 0 ? obj.daysLate : undefined
+        return daysLate !== undefined ? { date: obj.date, daysLate } : { date: obj.date }
+      }
+      return null
+    })
+    .filter((e): e is HistoryEntry => e !== null)
 }
 
 function rowToPlant(r: Row): Plant {
@@ -33,8 +50,9 @@ function rowToPlant(r: Row): Plant {
     greens: r.greens,
     size: r.size ?? 'md',
     fact: r.fact,
+    notes: r.notes ?? '',
     lastWatered: r.last_watered,
-    history: r.history ?? [],
+    history: normalizeHistory(r.history),
   }
 }
 
@@ -51,6 +69,7 @@ function plantToRow(p: Plant): Row {
     greens: p.greens,
     size: p.size,
     fact: p.fact,
+    notes: p.notes,
     last_watered: p.lastWatered,
     history: p.history,
   }

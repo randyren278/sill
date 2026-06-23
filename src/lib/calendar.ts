@@ -40,8 +40,8 @@ export function buildCalendar(plants: Plant[], offset: number): CalendarMonth {
   for (const p of plants) {
     const d = derive(p, true)
     for (const h of p.history) {
-      const dt = parse(h)
-      if (dt.getFullYear() === year && dt.getMonth() === month) push(h, COLORS.wateredDot)
+      const dt = parse(h.date)
+      if (dt.getFullYear() === year && dt.getMonth() === month) push(h.date, COLORS.wateredDot)
     }
     const nd = parse(d.nextDue)
     if (nd.getFullYear() === year && nd.getMonth() === month) push(d.nextDue, d.statusColor)

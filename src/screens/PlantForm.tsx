@@ -17,11 +17,12 @@ type FormState = {
   freq: number
   size: SizeKey
   lastWatered: string
+  notes: string
 }
 
 function freshForm(): FormState {
   const sp = SPECIES[0]
-  return { name: '', loc: '', speciesIdx: 0, light: sp.light, freq: sp.freq, size: sp.size, lastWatered: TODAY }
+  return { name: '', loc: '', speciesIdx: 0, light: sp.light, freq: sp.freq, size: sp.size, lastWatered: TODAY, notes: '' }
 }
 
 function formFromPlant(p: Plant): FormState {
@@ -35,6 +36,7 @@ function formFromPlant(p: Plant): FormState {
     freq: p.freqDays,
     size: p.size,
     lastWatered: p.lastWatered,
+    notes: p.notes,
   }
 }
 
@@ -110,6 +112,7 @@ function PlantFormInner({ mode, editing, upsert, navigate }: FormInnerProps) {
         greens: sp.greens,
         size: form.size,
         fact: speciesChanged ? sp.fact : editing.fact,
+        notes: form.notes,
         lastWatered: form.lastWatered,
       }
       await upsert(updated)
@@ -127,8 +130,9 @@ function PlantFormInner({ mode, editing, upsert, navigate }: FormInnerProps) {
         greens: sp.greens,
         size: form.size,
         fact: sp.fact,
+        notes: form.notes,
         lastWatered: form.lastWatered,
-        history: [form.lastWatered],
+        history: [{ date: form.lastWatered }],
       }
       await upsert(created)
       navigate('/')
@@ -275,6 +279,20 @@ function PlantFormInner({ mode, editing, upsert, navigate }: FormInnerProps) {
               style={{ width: '100%' }}
             />
           </div>
+          <Field label="Notes (optional)">
+            <textarea
+              value={form.notes}
+              onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+              placeholder="Light quirks, repotting dates, anything worth remembering…"
+              rows={3}
+              style={{
+                ...inputStyle,
+                resize: 'vertical',
+                minHeight: 80,
+                lineHeight: 1.5,
+              }}
+            />
+          </Field>
           <div className="pf-actions" style={{ display: 'flex', gap: 10, marginTop: 6 }}>
             <button
               type="button"

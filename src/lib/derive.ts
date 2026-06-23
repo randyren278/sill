@@ -11,6 +11,8 @@ export type DerivedHistoryEntry = {
   ring: string
 }
 
+export type PlantHealth = 'fresh' | 'wilted' | 'neutral'
+
 export type DerivedPlant = Plant & {
   since: number
   nextIn: number
@@ -22,6 +24,8 @@ export type DerivedPlant = Plant & {
   bigSub: string
   statusLine: string
   dotColor: string
+  /** Visual state for the sprite — drives wilt/perky CSS. */
+  health: PlantHealth
   /** raw progress 0..118 (can exceed 100 when overdue) */
   progress: number
   /** width to render right now (0 when not yet revealed, then progress) */
@@ -31,7 +35,6 @@ export type DerivedPlant = Plant & {
   nextDueFmt: string
   iconUrl: string
   iconBg: string
-  history: string[]
   historyDerived: DerivedHistoryEntry[]
 }
 
@@ -80,17 +83,24 @@ export function derive(p: Plant, revealed: boolean): DerivedPlant {
 
   const progress = Math.min(118, Math.round((since / p.freqDays) * 100))
 
+  // Sprite health — drives the wilt/perky CSS on PlantSprite.
+  // overdue → wilted; watered today/yesterday → fresh; otherwise neutral.
+  let health: PlantHealth = 'neutral'
+  if (nextIn < 0) health = 'wilted'
+  else if (since <= 1) health = 'fresh'
+
   const historyDerived: DerivedHistoryEntry[] = p.history
     .slice()
-    .sort()
-    .reverse()
+    .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
     .slice(0, 5)
     .map((h) => {
-      const a = diff(TODAY, h)
+      const a = diff(TODAY, h.date)
+      const agoBase = a === 0 ? 'today' : a + 'd ago'
+      const ago = h.daysLate && h.daysLate > 0 ? h.daysLate + 'd late · ' + agoBase : agoBase
       return {
-        iso: h,
-        dateFmt: fmt(h),
-        ago: a === 0 ? 'today' : a + 'd ago',
+        iso: h.date,
+        dateFmt: fmt(h.date),
+        ago,
         color: COLORS.happyDot,
         ring: 'rgba(127,174,106,.18)',
       }
@@ -108,6 +118,7 @@ export function derive(p: Plant, revealed: boolean): DerivedPlant {
     bigSub,
     statusLine,
     dotColor,
+    health,
     progress,
     meterWidth: revealed ? progress : 0,
     freqLabel: 'Every ' + p.freqDays + ' days',

@@ -2,6 +2,13 @@ export type ArchKey = 'broad' | 'cane' | 'trail' | 'succ' | 'fan'
 export type GreensKey = 'forest' | 'deep' | 'bright' | 'jade'
 export type SizeKey = 'xs' | 'sm' | 'md' | 'lg' | 'xl'
 
+/** One watering record. `daysLate` is omitted when the watering happened
+ *  on or before the due date; present (and > 0) only for late waterings. */
+export type HistoryEntry = {
+  date: string  // 'YYYY-MM-DD'
+  daysLate?: number
+}
+
 export type Plant = {
   id: string
   name: string
@@ -14,8 +21,9 @@ export type Plant = {
   greens: GreensKey
   size: SizeKey
   fact: string
+  notes: string
   lastWatered: string  // 'YYYY-MM-DD'
-  history: string[]    // 'YYYY-MM-DD' descending
+  history: HistoryEntry[]  // descending by date
 }
 
 export type Species = {

@@ -5,7 +5,10 @@ import { derive, type DerivedPlant } from '../lib/derive'
 import { MeterBar } from '../components/MeterBar'
 import { NumberCountUp } from '../components/NumberCountUp'
 import { PlantSprite } from '../components/PlantSprite'
-import { button, radius, type } from '../lib/tokens'
+import { useToast } from '../components/Toast'
+import { useSwipeToReveal } from '../lib/useSwipeToReveal'
+import { button, colors, radius, type } from '../lib/tokens'
+import type { Plant } from '../data/types'
 
 function todayLabel(): string {
   const d = new Date()
@@ -20,7 +23,8 @@ const TODAY_LABEL = todayLabel()
 type Filter = 'all' | 'thirsty'
 
 export function Dashboard() {
-  const { plants } = usePlants()
+  const { plants, waterMany, restorePlants } = usePlants()
+  const toast = useToast()
   const [filter, setFilter] = useState<Filter>('all')
 
   const derived = useMemo(
@@ -29,6 +33,32 @@ export function Dashboard() {
   )
   const thirstyCount = derived.filter((d) => d.nextIn <= 2).length
   const visible = filter === 'thirsty' ? derived.filter((d) => d.nextIn <= 2) : derived
+
+  // Senate framing for the bulk button: "Water N due plants" = overdue + due-today.
+  const dueIds = useMemo(() => derived.filter((d) => d.nextIn <= 0).map((d) => d.id), [derived])
+
+  const handleWaterAll = async () => {
+    if (dueIds.length === 0) return
+    const snapshots: Plant[] = dueIds
+      .map((id) => plants.find((p) => p.id === id))
+      .filter((p): p is Plant => !!p)
+    const results = await waterMany(dueIds)
+    const late = results.filter((r) => r.daysLate > 0).sort((a, b) => b.daysLate - a.daysLate)
+    const onTime = results.length - late.length
+    const lateBits = late.map((r) => r.daysLate + 'd late').join(', ')
+    const onTimeBit = onTime > 0 ? (lateBits ? ', ' : '') + onTime + ' on time' : ''
+    const plantsWord = results.length === 1 ? 'plant' : 'plants'
+    const message =
+      'Watered ' + results.length + ' ' + plantsWord +
+      (lateBits || onTimeBit ? ' — ' + lateBits + onTimeBit : '')
+    toast.show({
+      message,
+      actionLabel: 'Undo',
+      onAction: () => {
+        restorePlants(snapshots)
+      },
+    })
+  }
 
   return (
     <div className="fade-up">
@@ -60,13 +90,37 @@ export function Dashboard() {
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 8, marginBottom: 22, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 22, flexWrap: 'wrap', alignItems: 'center' }}>
         <FilterButton active={filter === 'all'} onClick={() => setFilter('all')}>
           All plants
         </FilterButton>
         <FilterButton active={filter === 'thirsty'} onClick={() => setFilter('thirsty')}>
           Needs water
         </FilterButton>
+        {dueIds.length > 0 && (
+          <button
+            type="button"
+            onClick={handleWaterAll}
+            className="hov-scale chip"
+            style={{
+              marginLeft: 'auto',
+              border: 'none',
+              cursor: 'pointer',
+              background: colors.brand.DEFAULT,
+              color: colors.onBrand.fg,
+              fontWeight: type.weight.semibold,
+              fontSize: button.chip.fontSize,
+              padding: '8px 16px',
+              borderRadius: radius.pill,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              transition: 'transform .25s',
+            }}
+          >
+            💧 Water {dueIds.length} due {dueIds.length === 1 ? 'plant' : 'plants'}
+          </button>
+        )}
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -102,22 +156,74 @@ function FilterButton({ active, onClick, children }: { active: boolean; onClick:
 
 function PlantRow({ plant }: { plant: DerivedPlant }) {
   const navigate = useNavigate()
+  const { water, restorePlants } = usePlants()
+  const toast = useToast()
+  const swipe = useSwipeToReveal({ actionWidth: 92 })
+
+  const onWater = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    swipe.close()
+    const result = await water(plant.id)
+    if (!result) return
+    const lateBit = result.daysLate > 0 ? ' (' + result.daysLate + 'd late)' : ''
+    toast.show({
+      message: 'Watered ' + plant.name + lateBit,
+      actionLabel: 'Undo',
+      onAction: () => {
+        restorePlants([result.before])
+      },
+    })
+  }
+
+  // Drag end may leave the row a few px translated even on a "tap" — if the
+  // user has dragged at all, suppress the navigate click.
+  const onRowClick = () => {
+    if (swipe.open || swipe.translateX < -4) return
+    navigate('/plants/' + plant.id)
+  }
+
   return (
-    <div
-      onClick={() => navigate('/plants/' + plant.id)}
-      className="plant-row hov-row"
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 22,
-        background: '#fbfaf5',
-        border: '1px solid #e6e3d7',
-        borderRadius: 20,
-        padding: '16px 22px',
-        cursor: 'pointer',
-        transition: 'transform .35s cubic-bezier(.2,.8,.2,1), box-shadow .35s, border-color .35s',
-      }}
-    >
+    <div className="plant-row-swipe" style={{ position: 'relative', overflow: 'hidden', borderRadius: 20 }}>
+      <button
+        type="button"
+        onClick={onWater}
+        aria-label={'Water ' + plant.name}
+        className="plant-row-action"
+        style={{
+          position: 'absolute',
+          top: 0,
+          right: 0,
+          bottom: 0,
+          width: 92,
+          border: 'none',
+          background: '#1e3d2f',
+          color: '#eef0e4',
+          fontSize: 22,
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        💧
+      </button>
+      <div
+        ref={swipe.ref}
+        onClick={onRowClick}
+        className="plant-row hov-row"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 22,
+          background: '#fbfaf5',
+          border: '1px solid #e6e3d7',
+          borderRadius: 20,
+          padding: '16px 22px',
+          cursor: 'pointer',
+          transform: `translateX(${swipe.translateX}px)`,
+          transition: swipe.translateX === 0 || swipe.open ? 'transform .25s cubic-bezier(.2,.8,.2,1)' : 'none',
+        }}
+      >
       <div
         style={{
           flex: 'none',
@@ -131,7 +237,7 @@ function PlantRow({ plant }: { plant: DerivedPlant }) {
           overflow: 'hidden',
         }}
       >
-        <PlantSprite arch={plant.arch} greens={plant.greens} variant={plant.size} size={62} />
+        <PlantSprite arch={plant.arch} greens={plant.greens} variant={plant.size} size={62} health={plant.health} />
       </div>
       <div className="plant-row-name" style={{ flex: 'none', width: 184 }}>
         <div className="pr-name" style={{ fontFamily: "'Newsreader', serif", fontSize: 23, lineHeight: 1.02 }}>{plant.name}</div>
@@ -204,6 +310,7 @@ function PlantRow({ plant }: { plant: DerivedPlant }) {
           {plant.bigSub}
         </div>
       </div>
+    </div>
     </div>
   )
 }

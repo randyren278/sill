@@ -7,12 +7,15 @@ import { NumberCountUp } from '../components/NumberCountUp'
 import { PlantSprite } from '../components/PlantSprite'
 import { StatusDot } from '../components/StatusDot'
 import { ConfirmDialog } from '../components/ConfirmDialog'
+import { NotesCard } from '../components/NotesCard'
+import { useToast } from '../components/Toast'
 import { button, colors, radius, type } from '../lib/tokens'
 
 export function PlantDetail() {
   const { id } = useParams<{ id: string }>()
-  const { plants, water, remove } = usePlants()
+  const { plants, water, restorePlants, remove, upsert } = usePlants()
   const navigate = useNavigate()
+  const toast = useToast()
   const [confirmOpen, setConfirmOpen] = useState(false)
 
   const plant = plants.find((p) => p.id === id)
@@ -21,6 +24,18 @@ export function PlantDetail() {
   if (!plants.length) return null
   if (!plant || !sel) return <Navigate to="/" replace />
 
+  const onWater = async () => {
+    const result = await water(sel.id)
+    if (!result) return
+    const lateBit = result.daysLate > 0 ? ' (' + result.daysLate + 'd late)' : ''
+    toast.show({
+      message: 'Watered ' + sel.name + lateBit,
+      actionLabel: 'Undo',
+      onAction: () => {
+        restorePlants([result.before])
+      },
+    })
+  }
   return (
     <div className="fade-up">
       <button
@@ -95,7 +110,7 @@ export function PlantDetail() {
           <div className="pd-hero-actions" style={{ display: 'flex', gap: 10, marginTop: 26 }}>
             <button
               type="button"
-              onClick={() => water(sel.id)}
+              onClick={onWater}
               className="hov-scale"
               style={{
                 border: button.primaryInverse.border,
@@ -179,6 +194,7 @@ export function PlantDetail() {
               greens={sel.greens}
               variant={sel.size}
               size={150}
+              health={sel.health}
               className="sway-on-mount pd-sprite"
             />
           </div>
@@ -300,6 +316,12 @@ export function PlantDetail() {
               ))}
             </div>
           </div>
+          <NotesCard
+            plant={plant}
+            onSave={async (notes) => {
+              await upsert({ ...plant, notes })
+            }}
+          />
         </div>
       </div>
       <ConfirmDialog
