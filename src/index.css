@@ -134,14 +134,6 @@ input[type=range] {
 }
 .hov-cal-nav:hover { background: #1e3d2f; color: #eef0e4; }
 
-/* Swipe-to-water (#6) — touch-only. The hook only listens on touch, but
- * we also visually clamp the action so it doesn't accidentally show on
- * desktop where the hover-translate is the real affordance. */
-@media (hover: hover) and (pointer: fine) {
-  .plant-row-action { display: none !important; }
-  .plant-row-swipe { overflow: visible !important; }
-}
-
 /* ───── Mobile foundations + single-breakpoint layout ───── */
 
 html, body { overflow-x: hidden; }

@@ -6,7 +6,6 @@ import { MeterBar } from '../components/MeterBar'
 import { NumberCountUp } from '../components/NumberCountUp'
 import { PlantSprite } from '../components/PlantSprite'
 import { useToast } from '../components/Toast'
-import { useSwipeToReveal } from '../lib/useSwipeToReveal'
 import { button, colors, radius, type } from '../lib/tokens'
 import type { Plant } from '../data/types'
 
@@ -156,74 +155,22 @@ function FilterButton({ active, onClick, children }: { active: boolean; onClick:
 
 function PlantRow({ plant }: { plant: DerivedPlant }) {
   const navigate = useNavigate()
-  const { water, restorePlants } = usePlants()
-  const toast = useToast()
-  const swipe = useSwipeToReveal({ actionWidth: 92 })
-
-  const onWater = async (e: React.MouseEvent) => {
-    e.stopPropagation()
-    swipe.close()
-    const result = await water(plant.id)
-    if (!result) return
-    const lateBit = result.daysLate > 0 ? ' (' + result.daysLate + 'd late)' : ''
-    toast.show({
-      message: 'Watered ' + plant.name + lateBit,
-      actionLabel: 'Undo',
-      onAction: () => {
-        restorePlants([result.before])
-      },
-    })
-  }
-
-  // Drag end may leave the row a few px translated even on a "tap" — if the
-  // user has dragged at all, suppress the navigate click.
-  const onRowClick = () => {
-    if (swipe.open || swipe.translateX < -4) return
-    navigate('/plants/' + plant.id)
-  }
 
   return (
-    <div className="plant-row-swipe" style={{ position: 'relative', overflow: 'hidden', borderRadius: 20 }}>
-      <button
-        type="button"
-        onClick={onWater}
-        aria-label={'Water ' + plant.name}
-        className="plant-row-action"
-        style={{
-          position: 'absolute',
-          top: 0,
-          right: 0,
-          bottom: 0,
-          width: 92,
-          border: 'none',
-          background: '#1e3d2f',
-          color: '#eef0e4',
-          fontSize: 22,
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        💧
-      </button>
-      <div
-        ref={swipe.ref}
-        onClick={onRowClick}
-        className="plant-row hov-row"
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 22,
-          background: '#fbfaf5',
-          border: '1px solid #e6e3d7',
-          borderRadius: 20,
-          padding: '16px 22px',
-          cursor: 'pointer',
-          transform: `translateX(${swipe.translateX}px)`,
-          transition: swipe.translateX === 0 || swipe.open ? 'transform .25s cubic-bezier(.2,.8,.2,1)' : 'none',
-        }}
-      >
+    <div
+      onClick={() => navigate('/plants/' + plant.id)}
+      className="plant-row hov-row"
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 22,
+        background: '#fbfaf5',
+        border: '1px solid #e6e3d7',
+        borderRadius: 20,
+        padding: '16px 22px',
+        cursor: 'pointer',
+      }}
+    >
       <div
         style={{
           flex: 'none',
@@ -310,7 +257,6 @@ function PlantRow({ plant }: { plant: DerivedPlant }) {
           {plant.bigSub}
         </div>
       </div>
-    </div>
     </div>
   )
 }
