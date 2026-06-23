@@ -2,3 +2,6 @@ node_modules
 dist
 .DS_Store
 *.local
+
+# Local /senate run reports — produced by the skill, not project source.
+senate-*.md
