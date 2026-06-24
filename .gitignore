@@ -5,3 +5,8 @@ dist
 
 # Local /senate run reports — produced by the skill, not project source.
 senate-*.md
+
+# Playwright artifacts
+/test-results/
+/playwright-report/
+/playwright/.cache/
