@@ -42,17 +42,6 @@ export function Subscribe() {
     }
   }, [])
 
-  const fireWelcome = async (subscribedEmail: string) => {
-    const welcomeSecret = import.meta.env.VITE_WELCOME_SECRET as string | undefined
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined
-    if (!welcomeSecret || !supabaseUrl) return
-    fetch(supabaseUrl + '/functions/v1/send-welcome', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-welcome-secret': welcomeSecret },
-      body: JSON.stringify({ email: subscribedEmail }),
-    }).catch(() => { /* non-blocking */ })
-  }
-
   const onSubscribe = async (e: React.FormEvent) => {
     e.preventDefault()
     const trimmed = email.trim()
@@ -67,15 +56,15 @@ export function Subscribe() {
       toast.show({ message: 'Couldn’t subscribe: ' + error.message })
       return
     }
+    // The RPC fires the welcome email server-side via pg_net — the browser
+    // never sees the welcome secret and we don't depend on a Vercel env var.
     const status = (data as { status?: string } | null)?.status
     if (status === 'subscribed') {
       toast.show({ message: 'You’re in. Watch your inbox for a welcome.' })
-      fireWelcome(trimmed)
       setEmail('')
       setSubscriberCount((c) => (c ?? 0) + 1)
     } else if (status === 'resubscribed') {
       toast.show({ message: 'Welcome back. Daily emails will start again tomorrow.' })
-      fireWelcome(trimmed)
       setEmail('')
       setSubscriberCount((c) => (c ?? 0) + 1)
     } else if (status === 'already_subscribed') {

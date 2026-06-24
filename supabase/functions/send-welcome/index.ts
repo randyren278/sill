@@ -38,12 +38,16 @@ function base64url(bytes: Uint8Array): string {
   return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 }
 
-async function unsubscribeUrl(subscriberId: string, email: string): Promise<string> {
+async function unsubscribeUrls(subscriberId: string, email: string): Promise<{ humanUrl: string; listUnsubUrl: string }> {
   const key = await hmacKey()
   const payload = subscriberId + ':' + email.toLowerCase()
   const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(payload))
   const token = subscriberId + '.' + base64url(new Uint8Array(sig))
-  return APP_URL + '/api/unsubscribe?token=' + encodeURIComponent(token)
+  const encoded = encodeURIComponent(token)
+  return {
+    humanUrl: APP_URL + '/unsubscribed?token=' + encoded,
+    listUnsubUrl: APP_URL + '/api/unsubscribe?token=' + encoded,
+  }
 }
 
 function fmtFullDate(d: Date): string {
@@ -237,10 +241,10 @@ Deno.serve(async (req: Request) => {
 
   const today = new Date()
   const samplePlants = pickSamplePlants((plants ?? []) as Plant[], today)
-  const unsubUrl = await unsubscribeUrl(sub.id, sub.email)
+  const { humanUrl, listUnsubUrl } = await unsubscribeUrls(sub.id, sub.email)
 
   const html = headHtml('Welcome to Sill') + welcomeBody({
-    unsubUrl,
+    unsubUrl: humanUrl,
     todayLabel: fmtFullDate(today),
     samplePlants,
   })
@@ -254,7 +258,7 @@ Deno.serve(async (req: Request) => {
       subject: 'Welcome to Sill 🌿',
       html,
       headers: {
-        'List-Unsubscribe': '<' + unsubUrl + '>',
+        'List-Unsubscribe': '<' + listUnsubUrl + '>',
         'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
       },
     }),

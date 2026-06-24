@@ -5,6 +5,7 @@ import { PlantDetail } from './screens/PlantDetail'
 import { PlantForm } from './screens/PlantForm'
 import { Calendar } from './screens/Calendar'
 import { Subscribe } from './screens/Subscribe'
+import { Unsubscribed } from './screens/Unsubscribed'
 
 export const router = createBrowserRouter([
   {
@@ -20,4 +21,9 @@ export const router = createBrowserRouter([
       { path: 'settings', element: <Subscribe /> },
     ],
   },
+  // Standalone landing (no App shell) — the unsubscribe link in every email
+  // lands here. Skipping the App parent keeps the page transactional and
+  // avoids confusing the user with the full nav while they're confirming
+  // a one-click action.
+  { path: '/unsubscribed', element: <Unsubscribed /> },
 ])

@@ -64,10 +64,11 @@ function fmtFullDate(d: Date): string {
   return days[d.getUTCDay()] + ', ' + months[d.getUTCMonth()] + ' ' + d.getUTCDate()
 }
 
-// HMAC-SHA256 over `${subscriberId}:${emailLower}`. Same construction the
-// unsubscribe Edge Function verifies. Token format in the URL is
-// `subscriberId.base64url(hmac)` so the function can look up the row by id
-// without leaking the email list.
+// HMAC-SHA256 over `${subscriberId}:${emailLower}`. Returns two URLs:
+//   - humanUrl: the visible "Unsubscribe" link in the email footer. Points
+//     at the React /unsubscribed page so the landing is real HTML.
+//   - listUnsubUrl: target of the RFC 8058 List-Unsubscribe HTTP header.
+//     Mail clients POST to this; the Edge Function flips the row.
 let cachedKey: CryptoKey | null = null
 async function hmacKey(): Promise<CryptoKey> {
   if (cachedKey) return cachedKey
@@ -87,12 +88,16 @@ function base64url(bytes: Uint8Array): string {
   return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 }
 
-async function unsubscribeUrl(subscriberId: string, email: string): Promise<string> {
+async function unsubscribeUrls(subscriberId: string, email: string): Promise<{ humanUrl: string; listUnsubUrl: string }> {
   const key = await hmacKey()
   const payload = subscriberId + ':' + email.toLowerCase()
   const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(payload))
   const token = subscriberId + '.' + base64url(new Uint8Array(sig))
-  return APP_URL + '/api/unsubscribe?token=' + encodeURIComponent(token)
+  const encoded = encodeURIComponent(token)
+  return {
+    humanUrl: APP_URL + '/unsubscribed?token=' + encoded,
+    listUnsubUrl: APP_URL + '/api/unsubscribe?token=' + encoded,
+  }
 }
 
 type Plant = {
@@ -358,8 +363,8 @@ Deno.serve(async (req: Request) => {
       continue
     }
 
-    const unsubUrl = await unsubscribeUrl(sub.id, sub.email)
-    const html = headHtml('Your plant digest · Sill') + renderHtml(classified, counts, unsubUrl, factOfDay)
+    const { humanUrl, listUnsubUrl } = await unsubscribeUrls(sub.id, sub.email)
+    const html = headHtml('Your plant digest · Sill') + renderHtml(classified, counts, humanUrl, factOfDay)
 
     const resp = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -370,7 +375,7 @@ Deno.serve(async (req: Request) => {
         subject,
         html,
         headers: {
-          'List-Unsubscribe': '<' + unsubUrl + '>',
+          'List-Unsubscribe': '<' + listUnsubUrl + '>',
           'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
         },
       }),
