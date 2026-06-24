@@ -4,7 +4,7 @@ import { Dashboard } from './screens/Dashboard'
 import { PlantDetail } from './screens/PlantDetail'
 import { PlantForm } from './screens/PlantForm'
 import { Calendar } from './screens/Calendar'
-import { Settings } from './screens/Settings'
+import { Subscribe } from './screens/Subscribe'
 
 export const router = createBrowserRouter([
   {
@@ -16,7 +16,8 @@ export const router = createBrowserRouter([
       { path: 'plants/:id', element: <PlantDetail /> },
       { path: 'plants/:id/edit', element: <PlantForm mode="edit" /> },
       { path: 'calendar', element: <Calendar /> },
-      { path: 'settings', element: <Settings /> },
+      // Path stays /settings so any links shipped in past emails still resolve.
+      { path: 'settings', element: <Subscribe /> },
     ],
   },
 ])

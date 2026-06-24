@@ -7,9 +7,10 @@ const STALE_HOURS = 30
 const DISMISS_KEY = 'sill.reminderBannerDismissed'
 
 /**
- * Heartbeat banner — yellow strip above the header when reminders are enabled
- * but no reminder_runs row has landed in the last 30h. Catches the silent
- * failure mode the senate raised (free-tier project pause, cron misconfig).
+ * Heartbeat banner — yellow strip above the header when at least one
+ * subscriber is enabled but no reminder_runs row has landed in the last 30h.
+ * Catches the silent failure mode the senate raised (free-tier project pause,
+ * cron misconfig).
  */
 export function ReminderHealthBanner() {
   const [stale, setStale] = useState(false)
@@ -19,12 +20,10 @@ export function ReminderHealthBanner() {
   useEffect(() => {
     let cancelled = false
     ;(async () => {
-      const { data: s } = await supabase
-        .from('reminder_settings')
-        .select('enabled')
-        .eq('id', 1)
-        .single()
-      if (cancelled || !s?.enabled) return
+      // Only show the banner if there's actually someone subscribed —
+      // otherwise a fresh project would always look "broken."
+      const { data: count } = await supabase.rpc('subscriber_count')
+      if (cancelled || typeof count !== 'number' || count <= 0) return
       const { data: r } = await supabase
         .from('reminder_runs')
         .select('ran_at')
@@ -73,7 +72,7 @@ export function ReminderHealthBanner() {
     >
       <span>
         Reminders {lastRanAt ? 'haven’t run since ' + new Date(lastRanAt).toLocaleString() : 'haven’t run yet'} —{' '}
-        <Link to="/settings" style={{ color: colors.brand.DEFAULT, fontWeight: 600 }}>check Settings</Link>.
+        <Link to="/settings" style={{ color: colors.brand.DEFAULT, fontWeight: 600 }}>subscribe again</Link>.
       </span>
       <button
         type="button"

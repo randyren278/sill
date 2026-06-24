@@ -5,52 +5,27 @@ import { ConfirmDialog } from '../components/ConfirmDialog'
 import { useToast } from '../components/Toast'
 import { button, colors, radius, type } from '../lib/tokens'
 
-type ReminderSettings = {
-  id: number
-  email: string | null
-  enabled: boolean
-  send_hour_utc: number
-}
-
-type LastRun = {
-  ran_at: string
-  sent: boolean
-  skip_reason: string | null
-  due_count: number
-}
-
-function relativeTime(iso: string): string {
-  const then = new Date(iso).getTime()
-  const now = Date.now()
-  const min = Math.round((now - then) / 60000)
-  if (min < 1) return 'just now'
-  if (min < 60) return min + ' min ago'
-  const hr = Math.round(min / 60)
-  if (hr < 24) return hr + 'h ago'
-  const d = Math.round(hr / 24)
-  return d + 'd ago'
-}
-
 /**
- * Settings screen.
+ * Subscribe screen.
  *
- * Reminders — single email + enable toggle. Mutates the single-row
- *   reminder_settings table. Below the form, "Last sent" line read from
- *   reminder_runs.
- * Backup — added in feature #5.
+ * Public subscribe form — anyone visiting can sign up their email to receive
+ * the daily plant digest. The page intentionally NEVER reads any subscriber
+ * row from the DB. Submitting an email calls the security-definer RPC
+ * `public.subscribe(p_email)`, which is the only write surface anon clients
+ * have on `subscribers`.
+ *
+ * Backup section below stays as-is — per single-tenant trust model, anyone
+ * can export / import the plant collection.
  */
-export function Settings() {
+export function Subscribe() {
   const navigate = useNavigate()
   const toast = useToast()
 
-  const [settings, setSettings] = useState<ReminderSettings | null>(null)
-  const [lastRun, setLastRun] = useState<LastRun | null>(null)
   const [email, setEmail] = useState('')
-  const [enabled, setEnabled] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [loadError, setLoadError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+  const [subscriberCount, setSubscriberCount] = useState<number | null>(null)
 
-  // Backup section state.
+  // Backup section state (carried over from old Settings).
   const [importBusy, setImportBusy] = useState(false)
   const [pendingImport, setPendingImport] = useState<{ plants: unknown[] } | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -58,60 +33,58 @@ export function Settings() {
   useEffect(() => {
     let cancelled = false
     ;(async () => {
-      const { data, error } = await supabase
-        .from('reminder_settings')
-        .select('id,email,enabled,send_hour_utc')
-        .eq('id', 1)
-        .single()
+      const { data } = await supabase.rpc('subscriber_count')
       if (cancelled) return
-      if (error) {
-        setLoadError(error.message)
-        return
-      }
-      setSettings(data as ReminderSettings)
-      setEmail((data?.email as string | null) ?? '')
-      setEnabled(Boolean(data?.enabled))
-    })()
-    ;(async () => {
-      const { data } = await supabase
-        .from('reminder_runs')
-        .select('ran_at,sent,skip_reason,due_count')
-        .order('ran_at', { ascending: false })
-        .limit(1)
-      if (cancelled) return
-      if (data && data.length) setLastRun(data[0] as LastRun)
+      if (typeof data === 'number') setSubscriberCount(data)
     })()
     return () => {
       cancelled = true
     }
   }, [])
 
-  const onSave = async () => {
-    if (!settings) return
-    setSaving(true)
-    const next = { email: email.trim() || null, enabled }
-    const transitionedToEnabled = !settings.enabled && enabled && !!next.email
-    const { error } = await supabase.from('reminder_settings').update(next).eq('id', 1)
-    setSaving(false)
-    if (error) {
-      toast.show({ message: 'Couldn’t save: ' + error.message })
+  const fireWelcome = async (subscribedEmail: string) => {
+    const welcomeSecret = import.meta.env.VITE_WELCOME_SECRET as string | undefined
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined
+    if (!welcomeSecret || !supabaseUrl) return
+    fetch(supabaseUrl + '/functions/v1/send-welcome', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-welcome-secret': welcomeSecret },
+      body: JSON.stringify({ email: subscribedEmail }),
+    }).catch(() => { /* non-blocking */ })
+  }
+
+  const onSubscribe = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const trimmed = email.trim()
+    if (!trimmed) {
+      toast.show({ message: 'Enter your email first.' })
       return
     }
-    setSettings({ ...settings, email: next.email, enabled: next.enabled })
-    toast.show({ message: enabled ? 'Reminders on.' : 'Reminders off.' })
-
-    // Fire the welcome email when reminders are turned ON for the first time.
-    // The Edge Function is idempotent — it checks welcomed_at and skips if set.
-    if (transitionedToEnabled) {
-      const welcomeSecret = import.meta.env.VITE_WELCOME_SECRET as string | undefined
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined
-      if (welcomeSecret && supabaseUrl) {
-        // Fire and forget — toast already shown, errors stay silent.
-        fetch(supabaseUrl + '/functions/v1/send-welcome', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json', 'x-welcome-secret': welcomeSecret },
-        }).catch(() => { /* non-blocking */ })
-      }
+    setSubmitting(true)
+    const { data, error } = await supabase.rpc('subscribe', { p_email: trimmed })
+    setSubmitting(false)
+    if (error) {
+      toast.show({ message: 'Couldn’t subscribe: ' + error.message })
+      return
+    }
+    const status = (data as { status?: string } | null)?.status
+    if (status === 'subscribed') {
+      toast.show({ message: 'You’re in. Watch your inbox for a welcome.' })
+      fireWelcome(trimmed)
+      setEmail('')
+      setSubscriberCount((c) => (c ?? 0) + 1)
+    } else if (status === 'resubscribed') {
+      toast.show({ message: 'Welcome back. Daily emails will start again tomorrow.' })
+      fireWelcome(trimmed)
+      setEmail('')
+      setSubscriberCount((c) => (c ?? 0) + 1)
+    } else if (status === 'already_subscribed') {
+      toast.show({ message: 'You’re already on the list. Check your spam folder if nothing arrived.' })
+      setEmail('')
+    } else if (status === 'invalid_email') {
+      toast.show({ message: 'That doesn’t look like a valid email.' })
+    } else {
+      toast.show({ message: 'Something went wrong. Try again?' })
     }
   }
 
@@ -220,7 +193,7 @@ export function Settings() {
           marginBottom: 28,
         }}
       >
-        Settings
+        Subscribe
       </div>
 
       <section
@@ -242,89 +215,81 @@ export function Settings() {
             marginBottom: 12,
           }}
         >
-          Reminders
+          Daily plant digest
         </div>
-        <div style={{ fontSize: 14, color: colors.ink.muted, marginBottom: 16, lineHeight: 1.5 }}>
-          Daily roster digest, sent once at 9am Pacific (16:00 UTC).
+        <div style={{ fontSize: 14, color: colors.ink.muted, marginBottom: 18, lineHeight: 1.55 }}>
+          Get a morning email with the status of every plant on the sill — what needs water,
+          what’s coming up, what’s looking happy. One message a day, sent at 9 am Pacific.
+          Unsubscribe in one click from any email.
         </div>
 
-        {loadError ? (
-          <div style={{ fontSize: 13, color: colors.status.overdue }}>{loadError}</div>
-        ) : !settings ? (
-          <div style={{ fontSize: 13, color: colors.ink.faint }}>Loading…</div>
-        ) : (
-          <>
-            <label
-              style={{
-                display: 'block',
-                fontFamily: type.eyebrow.fontFamily,
-                fontSize: 11,
-                letterSpacing: '.12em',
-                textTransform: 'uppercase',
-                color: colors.ink.muted,
-                marginBottom: 8,
-              }}
-            >
-              Email
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              autoCapitalize="off"
-              autoCorrect="off"
-              inputMode="email"
-              style={{
-                width: '100%',
-                fontSize: type.body.fontSize,
-                padding: '13px 15px',
-                borderRadius: radius.input,
-                border: `1px solid ${colors.border.DEFAULT}`,
-                background: colors.canvas,
-                color: colors.ink.primary,
-                marginBottom: 16,
-                outline: 'none',
-                transition: 'border-color .2s, box-shadow .2s',
-              }}
-            />
-            <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18, cursor: 'pointer', minHeight: 44 }}>
-              <input
-                type="checkbox"
-                checked={enabled}
-                onChange={(e) => setEnabled(e.target.checked)}
-                style={{ width: 18, height: 18, accentColor: colors.brand.DEFAULT }}
-              />
-              <span style={{ fontSize: 14, color: colors.ink.primary }}>Send daily email reminders</span>
-            </label>
-            <button
-              type="button"
-              onClick={onSave}
-              disabled={saving}
-              className="hov-tile"
-              style={{
-                border: 'none',
-                cursor: saving ? 'wait' : 'pointer',
-                background: button.primary.background,
-                color: button.primary.color,
-                fontWeight: type.weight.semibold,
-                fontSize: button.primary.fontSize,
-                padding: button.primary.padding,
-                borderRadius: radius.pill,
-                opacity: saving ? 0.7 : 1,
-              }}
-            >
-              {saving ? 'Saving…' : 'Save'}
-            </button>
-            <div style={{ fontSize: 12, color: colors.ink.faint, marginTop: 16, lineHeight: 1.5 }}>
-              {lastRun
-                ? lastRun.sent
-                  ? 'Last sent ' + relativeTime(lastRun.ran_at) + ' (' + lastRun.due_count + ' plant' + (lastRun.due_count === 1 ? '' : 's') + ').'
-                  : 'Last run ' + relativeTime(lastRun.ran_at) + ' — ' + (lastRun.skip_reason ?? 'skipped') + '.'
-                : 'No reminder has run yet.'}
-            </div>
-          </>
-        )}
+        <form onSubmit={onSubscribe}>
+          <label
+            htmlFor="subscribe-email"
+            style={{
+              display: 'block',
+              fontFamily: type.eyebrow.fontFamily,
+              fontSize: 11,
+              letterSpacing: '.12em',
+              textTransform: 'uppercase',
+              color: colors.ink.muted,
+              marginBottom: 8,
+            }}
+          >
+            Email
+          </label>
+          <input
+            id="subscribe-email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@example.com"
+            autoCapitalize="off"
+            autoCorrect="off"
+            autoComplete="email"
+            inputMode="email"
+            disabled={submitting}
+            style={{
+              width: '100%',
+              fontSize: type.body.fontSize,
+              padding: '13px 15px',
+              borderRadius: radius.input,
+              border: `1px solid ${colors.border.DEFAULT}`,
+              background: colors.canvas,
+              color: colors.ink.primary,
+              marginBottom: 16,
+              outline: 'none',
+              transition: 'border-color .2s, box-shadow .2s',
+              boxSizing: 'border-box',
+            }}
+          />
+          <button
+            type="submit"
+            disabled={submitting}
+            className="hov-tile"
+            style={{
+              border: 'none',
+              cursor: submitting ? 'wait' : 'pointer',
+              background: button.primary.background,
+              color: button.primary.color,
+              fontWeight: type.weight.semibold,
+              fontSize: button.primary.fontSize,
+              padding: button.primary.padding,
+              borderRadius: radius.pill,
+              opacity: submitting ? 0.7 : 1,
+            }}
+          >
+            {submitting ? 'Subscribing…' : 'Subscribe'}
+          </button>
+        </form>
+
+        {subscriberCount !== null && subscriberCount > 0 ? (
+          <div style={{ fontSize: 12, color: colors.ink.faint, marginTop: 16, lineHeight: 1.5 }}>
+            {subscriberCount === 1
+              ? '1 person subscribed.'
+              : subscriberCount + ' people subscribed.'}
+          </div>
+        ) : null}
       </section>
 
       <section
@@ -349,7 +314,7 @@ export function Settings() {
           Backup
         </div>
         <div style={{ fontSize: 14, color: colors.ink.muted, marginBottom: 16, lineHeight: 1.5 }}>
-          Export your plants as JSON — keep a copy in case the Supabase project ever pauses. Import overwrites plants with matching IDs.
+          Export the plant collection as JSON, or import a backup. Import overwrites plants with matching IDs.
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
           <button

@@ -1,22 +1,24 @@
-// Sill — daily watering reminder.
+// Sill — daily watering reminder, multi-subscriber.
 //
 // Invoked by pg_cron once daily (16:00 UTC = 9am PDT / 8am PST). Behaviour:
 //
 //   1. Reject unless the caller carries x-cron-secret = CRON_SHARED_SECRET.
-//   2. Read reminder_settings (single-row, id=1). Skip if disabled or no email.
-//   3. Hard send cap: refuse to send if any reminder_runs row exists for
-//      today's UTC date with sent=true. Belt-and-braces against cron loops.
-//   4. Classify every plant (overdue / today / soon / happy) and render a
-//      full roster digest. No early-return when nothing is due — the user
-//      gets a daily heartbeat that reminders are alive.
-//   5. POST a single transactional email to Resend, with RFC 8058
-//      List-Unsubscribe headers carrying an HMAC-signed unsubscribe link.
-//   6. ALWAYS write one row to reminder_runs so the heartbeat banner can
-//      detect silent stops.
+//   2. Fetch every subscribers row where enabled=true.
+//   3. Fetch plants once (shared across the fan-out).
+//   4. For each subscriber:
+//        - Skip if last_sent_date = today_utc (per-row rate cap, replaces
+//          the old global 1-per-day cap).
+//        - Render the digest HTML with that subscriber's HMAC-signed
+//          unsubscribe URL.
+//        - POST to Resend.
+//        - On success: stamp last_sent_date + last_resend_id.
+//        - Always: insert one reminder_runs row keyed by subscriber_id.
+//   5. Return aggregate counts ({subscribers, sent, rate_limited, failed}).
 //
-// Email design v2: table-based layout from docs/Sill Email - Standalone.html,
-// left-stripe group accents, fun fact section, dark-mode @media block.
-// Palette locked by 3-lens audit (contrast / brand-fidelity / email-client).
+// Token construction (matches unsubscribe Edge Function):
+//   payload = `${subscriberId}:${lower(email)}`
+//   sig     = base64url(hmac_sha256(UNSUBSCRIBE_SECRET, payload))
+//   token   = `${subscriberId}.${sig}`
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
 
@@ -62,8 +64,10 @@ function fmtFullDate(d: Date): string {
   return days[d.getUTCDay()] + ', ' + months[d.getUTCMonth()] + ' ' + d.getUTCDate()
 }
 
-// HMAC-SHA256 over the recipient email — same construction the unsubscribe
-// Edge Function verifies. Module-scoped key cache avoids re-import per send.
+// HMAC-SHA256 over `${subscriberId}:${emailLower}`. Same construction the
+// unsubscribe Edge Function verifies. Token format in the URL is
+// `subscriberId.base64url(hmac)` so the function can look up the row by id
+// without leaking the email list.
 let cachedKey: CryptoKey | null = null
 async function hmacKey(): Promise<CryptoKey> {
   if (cachedKey) return cachedKey
@@ -83,10 +87,12 @@ function base64url(bytes: Uint8Array): string {
   return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 }
 
-async function unsubscribeUrl(email: string): Promise<string> {
+async function unsubscribeUrl(subscriberId: string, email: string): Promise<string> {
   const key = await hmacKey()
-  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(email))
-  return APP_URL + '/api/unsubscribe?token=' + encodeURIComponent(base64url(new Uint8Array(sig)))
+  const payload = subscriberId + ':' + email.toLowerCase()
+  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(payload))
+  const token = subscriberId + '.' + base64url(new Uint8Array(sig))
+  return APP_URL + '/api/unsubscribe?token=' + encodeURIComponent(token)
 }
 
 type Plant = {
@@ -257,7 +263,7 @@ function renderHtml(
     '<tr><td align="center" class="sill-footer sill-divider-td" style="padding:22px 32px 32px 32px;border-top:1px solid #e6e3d7;">' +
     '<a href="' + APP_URL + '" class="sill-cta" style="display:inline-block;background-color:#1e3d2f;color:#eef0e4;font-family:-apple-system,\'Hanken Grotesk\',BlinkMacSystemFont,\'Segoe UI\',sans-serif;font-size:14px;font-weight:600;text-decoration:none;padding:11px 22px;border-radius:999px;mso-padding-alt:11px 22px;">Open Sill</a>' +
     '<p class="sill-faint" style="margin:14px 0 0 0;font-family:-apple-system,\'Hanken Grotesk\',BlinkMacSystemFont,\'Segoe UI\',sans-serif;font-size:11px;color:#858b80;">' +
-    '<a href="' + APP_URL + '/settings" class="sill-faint" style="color:#858b80;text-decoration:none;">Manage reminders →</a>&nbsp;·&nbsp;<a href="' + unsubUrl + '" class="sill-faint" style="color:#858b80;text-decoration:none;">Unsubscribe</a>' +
+    '<a href="' + unsubUrl + '" class="sill-faint" style="color:#858b80;text-decoration:none;">Unsubscribe</a>' +
     '</p>' +
     '</td></tr>' +
 
@@ -268,6 +274,7 @@ function renderHtml(
 }
 
 async function logRun(row: {
+  subscriber_id?: string | null
   due_count: number
   sent: boolean
   skip_reason?: string | null
@@ -277,6 +284,8 @@ async function logRun(row: {
   await sb.from('reminder_runs').insert(row)
 }
 
+type Subscriber = { id: string; email: string; last_sent_date: string | null; welcomed_at: string | null }
+
 Deno.serve(async (req: Request) => {
   // Auth gate — refuse anything that didn't come from our cron.
   const supplied = req.headers.get('x-cron-secret') ?? ''
@@ -284,32 +293,30 @@ Deno.serve(async (req: Request) => {
     return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401, headers: { 'content-type': 'application/json' } })
   }
 
-  const { data: settings, error: sErr } = await sb
-    .from('reminder_settings')
-    .select('*')
-    .eq('id', 1)
-    .single()
-  if (sErr) {
-    await logRun({ due_count: 0, sent: false, skip_reason: 'settings_read_failed', error: sErr.message })
-    return new Response(JSON.stringify({ skipped: 'settings_read_failed' }), { status: 200 })
+  if (!RESEND_API_KEY) {
+    await logRun({ due_count: 0, sent: false, skip_reason: 'missing_resend_key' })
+    return new Response(JSON.stringify({ skipped: 'missing_resend_key' }), { status: 200 })
   }
-  if (!settings?.enabled || !settings?.email) {
-    await logRun({ due_count: 0, sent: false, skip_reason: 'disabled' })
-    return new Response(JSON.stringify({ skipped: 'disabled' }), { status: 200 })
+  if (!UNSUBSCRIBE_SECRET) {
+    await logRun({ due_count: 0, sent: false, skip_reason: 'missing_unsubscribe_secret' })
+    return new Response(JSON.stringify({ skipped: 'missing_unsubscribe_secret' }), { status: 200 })
   }
 
-  // Hard daily cap inside the sender (senate r2 finding).
-  const todayUtc = todayUtcIso()
-  const { count: alreadySent } = await sb
-    .from('reminder_runs')
-    .select('*', { count: 'exact', head: true })
-    .gte('ran_at', todayUtc + 'T00:00:00Z')
-    .eq('sent', true)
-  if ((alreadySent ?? 0) >= 1) {
-    await logRun({ due_count: 0, sent: false, skip_reason: 'rate_limited' })
-    return new Response(JSON.stringify({ skipped: 'rate_limited' }), { status: 200 })
+  // 1. Fetch all enabled subscribers (service-role bypasses RLS).
+  const { data: subscribers, error: subErr } = await sb
+    .from('subscribers')
+    .select('id,email,last_sent_date,welcomed_at')
+    .eq('enabled', true)
+  if (subErr) {
+    await logRun({ due_count: 0, sent: false, skip_reason: 'subscribers_read_failed', error: subErr.message })
+    return new Response(JSON.stringify({ skipped: 'subscribers_read_failed' }), { status: 200 })
+  }
+  if (!subscribers || subscribers.length === 0) {
+    await logRun({ due_count: 0, sent: false, skip_reason: 'no_subscribers' })
+    return new Response(JSON.stringify({ skipped: 'no_subscribers' }), { status: 200 })
   }
 
+  // 2. Fetch plants once — they're shared across the fan-out.
   const { data: plants, error: pErr } = await sb
     .from('plants')
     .select('id,name,last_watered,freq_days,loc,fact,latin,common')
@@ -318,9 +325,10 @@ Deno.serve(async (req: Request) => {
     return new Response(JSON.stringify({ skipped: 'plants_read_failed' }), { status: 200 })
   }
 
+  const todayUtc = todayUtcIso()
   const classified = (plants as Plant[])
     .map((p) => classify(p, todayUtc))
-    .sort((a, b) => a.nextIn - b.nextIn)  // most-overdue first, healthiest last
+    .sort((a, b) => a.nextIn - b.nextIn)
 
   if (classified.length === 0) {
     await logRun({ due_count: 0, sent: false, skip_reason: 'no_plants' })
@@ -332,44 +340,62 @@ Deno.serve(async (req: Request) => {
     soon:  classified.filter((c) => c.status === 'soon').length,
     happy: classified.filter((c) => c.status === 'happy').length,
   }
-
   let subject: string
   if (counts.needs > 0) subject = counts.needs + ' plant' + (counts.needs === 1 ? '' : 's') + ' need water'
   else if (counts.soon > 0) subject = counts.soon + ' plant' + (counts.soon === 1 ? '' : 's') + ' due soon'
   else subject = 'All ' + counts.happy + ' plant' + (counts.happy === 1 ? '' : 's') + ' happy 🌿'
 
-  if (!RESEND_API_KEY) {
-    await logRun({ due_count: counts.needs, sent: false, skip_reason: 'missing_resend_key' })
-    return new Response(JSON.stringify({ skipped: 'missing_resend_key' }), { status: 200 })
-  }
-  if (!UNSUBSCRIBE_SECRET) {
-    await logRun({ due_count: counts.needs, sent: false, skip_reason: 'missing_unsubscribe_secret' })
-    return new Response(JSON.stringify({ skipped: 'missing_unsubscribe_secret' }), { status: 200 })
-  }
-
-  const unsubUrl = await unsubscribeUrl(settings.email)
   const factOfDay = pickFactOfDay(plants as Plant[])
-  const html = headHtml('Your plant digest · Sill') + renderHtml(classified, counts, unsubUrl, factOfDay)
 
-  const resp = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: { Authorization: 'Bearer ' + RESEND_API_KEY, 'content-type': 'application/json' },
-    body: JSON.stringify({
-      from: SENDER,
-      to: settings.email,
-      subject,
-      html,
-      headers: {
-        'List-Unsubscribe': '<' + unsubUrl + '>',
-        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
-      },
-    }),
-  })
-  const body = await resp.json().catch(() => ({}))
-  if (!resp.ok) {
-    await logRun({ due_count: counts.needs, sent: false, error: JSON.stringify(body).slice(0, 1024) })
-    return new Response(JSON.stringify({ sent: false, error: body }), { status: 200 })
+  // 3. Fan out one Resend POST per subscriber, with per-row rate cap.
+  let sentCount = 0
+  let skippedRate = 0
+  let failedCount = 0
+  for (const sub of subscribers as Subscriber[]) {
+    if (sub.last_sent_date === todayUtc) {
+      await logRun({ subscriber_id: sub.id, due_count: counts.needs, sent: false, skip_reason: 'rate_limited' })
+      skippedRate++
+      continue
+    }
+
+    const unsubUrl = await unsubscribeUrl(sub.id, sub.email)
+    const html = headHtml('Your plant digest · Sill') + renderHtml(classified, counts, unsubUrl, factOfDay)
+
+    const resp = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + RESEND_API_KEY, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        from: SENDER,
+        to: sub.email,
+        subject,
+        html,
+        headers: {
+          'List-Unsubscribe': '<' + unsubUrl + '>',
+          'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+        },
+      }),
+    })
+    const body = await resp.json().catch(() => ({}))
+    if (!resp.ok) {
+      await logRun({ subscriber_id: sub.id, due_count: counts.needs, sent: false, error: JSON.stringify(body).slice(0, 1024) })
+      failedCount++
+      continue
+    }
+    const resendId = (body as { id?: string }).id ?? null
+    await sb.from('subscribers')
+      .update({ last_sent_date: todayUtc, last_resend_id: resendId })
+      .eq('id', sub.id)
+    await logRun({ subscriber_id: sub.id, due_count: counts.needs, sent: true, resend_id: resendId })
+    sentCount++
   }
-  await logRun({ due_count: counts.needs, sent: true, resend_id: (body as { id?: string }).id ?? null })
-  return new Response(JSON.stringify({ sent: true, subject, counts, fact: factOfDay?.plant.name ?? null }), { status: 200 })
+
+  return new Response(JSON.stringify({
+    subscribers: subscribers.length,
+    sent: sentCount,
+    rate_limited: skippedRate,
+    failed: failedCount,
+    subject,
+    counts,
+    fact: factOfDay?.plant.name ?? null,
+  }), { status: 200 })
 })

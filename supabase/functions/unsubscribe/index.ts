@@ -1,23 +1,21 @@
-// Sill — one-click unsubscribe.
+// Sill — one-click unsubscribe, multi-subscriber.
 //
 // Public endpoint (no x-cron-secret, no JWT). Verifies an HMAC token sent
-// in the daily reminder email and flips reminder_settings.enabled to false.
+// in the daily reminder email and flips a SINGLE subscriber's row to
+// enabled=false.
 //
-// Two methods:
-//   GET  /?token=<base64url(hmac)>   →  HTML confirmation page (200) or error page (400)
-//   POST /?token=<base64url(hmac)>   →  empty 200 / 400  (RFC 8058 one-click)
+// Token format: `${subscriberId}.${base64url(hmac)}` where
+//   payload = `${subscriberId}:${lower(email)}`
+//   hmac    = HMAC-SHA256(UNSUBSCRIBE_SECRET, payload)
 //
-// Three landing states share the same email-shell template (560 card, dark
-// mode @media, responsive breakpoint, locked palette) so the inbox-click →
-// landing transition feels seamless:
+// The subscriberId in the URL lets us look up the row directly (no email
+// disclosure), and the HMAC verifies the link came from a real send (rotate
+// UNSUBSCRIBE_SECRET to invalidate every outstanding link).
+//
+// Three landing states share the same email-shell template:
 //   - "Just unsubscribed"   — eyebrow REMINDERS OFF in happy-green
 //   - "Already unsubscribed" — eyebrow ALREADY OFF in muted gray
 //   - "Invalid / expired"    — eyebrow UNSUBSCRIBE FAILED in overdue-orange
-//
-// The single-tenant trust model means the only "user" is the owner; the
-// token is a permission-bearer, not an identity. The HMAC is computed
-// over the recipient email using UNSUBSCRIBE_SECRET, so no token table
-// or expiry is needed — rotate the secret to invalidate all old links.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
 
@@ -49,12 +47,26 @@ function fromBase64url(s: string): Uint8Array {
   return out
 }
 
-async function verifyToken(email: string, token: string): Promise<boolean> {
-  if (!email || !token || !UNSUBSCRIBE_SECRET) return false
-  let bytes: Uint8Array
-  try { bytes = fromBase64url(token) } catch { return false }
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+function parseToken(token: string): { subscriberId: string; sig: Uint8Array } | null {
+  if (!token || !UNSUBSCRIBE_SECRET) return null
+  const dot = token.indexOf('.')
+  if (dot < 36) return null  // UUID is 36 chars
+  const subscriberId = token.slice(0, dot)
+  const sigPart = token.slice(dot + 1)
+  if (!UUID_RE.test(subscriberId) || sigPart.length < 16) return null
+  try {
+    return { subscriberId, sig: fromBase64url(sigPart) }
+  } catch {
+    return null
+  }
+}
+
+async function verifySig(subscriberId: string, emailLower: string, sig: Uint8Array): Promise<boolean> {
   const key = await hmacKey()
-  return crypto.subtle.verify('HMAC', key, bytes, new TextEncoder().encode(email))
+  const payload = subscriberId + ':' + emailLower
+  return crypto.subtle.verify('HMAC', key, sig, new TextEncoder().encode(payload))
 }
 
 function fmtFullDate(d: Date): string {
@@ -113,29 +125,20 @@ function pageHtml(v: Variant, message: string, subtext: string): string {
     '<body class="sill-page-bg" style="margin:0;padding:0;background-color:#f1eee2;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;">' +
     '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" bgcolor="#f1eee2" class="sill-page-bg" style="background-color:#f1eee2;">' +
     '<tr><td align="center" valign="top" style="padding:32px 16px 48px 16px;">' +
-
-    // 560 card
     '<table role="presentation" width="560" cellspacing="0" cellpadding="0" border="0" class="sill-card" style="width:100%;max-width:560px;background-color:#fbfaf5;border-radius:18px;border:1px solid #e6e3d7;">' +
-
-    // header
     '<tr><td align="center" class="sill-header sill-divider-td" style="padding:36px 32px 28px 32px;border-bottom:1px solid #e6e3d7;">' +
     '<img src="' + APP_URL + '/icon-email.png" width="64" height="64" alt="Sill" style="display:block;border-radius:14px;image-rendering:pixelated;margin:0 auto 18px auto;">' +
     '<p class="sill-ink" style="margin:0 0 10px 0;font-family:\'Newsreader\',Georgia,serif;font-size:30px;font-weight:700;letter-spacing:-0.01em;line-height:1;color:#1b211c;">Sill</p>' +
     '<p class="' + eb.cls + '" style="margin:0 0 6px 0;font-family:ui-monospace,\'SF Mono\',Menlo,monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.18em;color:' + eb.color + ';">' + eb.text + '</p>' +
     '<p class="sill-faint" style="margin:0;font-family:ui-monospace,\'SF Mono\',Menlo,monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.18em;color:#858b80;">' + dateLabel + '</p>' +
     '</td></tr>' +
-
-    // body
     '<tr><td class="sill-padded" style="padding:28px 32px 8px 32px;">' +
     '<p class="sill-ink" style="margin:0 0 14px 0;font-family:\'Newsreader\',Georgia,serif;font-size:20px;line-height:1.45;color:#1b211c;">' + message + '</p>' +
     '<p class="sill-muted" style="margin:0 0 22px 0;font-family:-apple-system,\'Hanken Grotesk\',BlinkMacSystemFont,\'Segoe UI\',sans-serif;font-size:14px;line-height:1.55;color:#6b736a;">' + subtext + '</p>' +
     '</td></tr>' +
-
-    // footer (CTA)
     '<tr><td align="center" class="sill-footer sill-divider-td" style="padding:22px 32px 32px 32px;border-top:1px solid #e6e3d7;">' +
-    '<a href="' + APP_URL + '/settings" class="sill-cta" style="display:inline-block;background-color:#1e3d2f;color:#eef0e4;font-family:-apple-system,\'Hanken Grotesk\',BlinkMacSystemFont,\'Segoe UI\',sans-serif;font-size:14px;font-weight:600;text-decoration:none;padding:11px 22px;border-radius:999px;mso-padding-alt:11px 22px;">Open Sill settings</a>' +
+    '<a href="' + APP_URL + '" class="sill-cta" style="display:inline-block;background-color:#1e3d2f;color:#eef0e4;font-family:-apple-system,\'Hanken Grotesk\',BlinkMacSystemFont,\'Segoe UI\',sans-serif;font-size:14px;font-weight:600;text-decoration:none;padding:11px 22px;border-radius:999px;mso-padding-alt:11px 22px;">Open Sill</a>' +
     '</td></tr>' +
-
     '</table>' +
     '</td></tr></table>' +
     '</body></html>'
@@ -151,15 +154,8 @@ Deno.serve(async (req: Request) => {
     return new Response('method not allowed', { status: 405 })
   }
 
-  const { data: settings, error: sErr } = await sb
-    .from('reminder_settings')
-    .select('id,email,enabled')
-    .eq('id', 1)
-    .single()
-
   const respond = (status: number, html: string, empty = false) => {
     if (method === 'POST') {
-      // RFC 8058 says one-click endpoint returns empty 200 on success.
       return new Response(empty ? '' : html, {
         status,
         headers: { 'content-type': empty ? 'text/plain' : 'text/html; charset=utf-8' },
@@ -171,38 +167,46 @@ Deno.serve(async (req: Request) => {
     })
   }
 
-  if (sErr || !settings?.email) {
-    return respond(400, pageHtml(
-      'error',
-      'We couldn’t process that unsubscribe link.',
-      'The link may have expired. You can manage reminders directly in Settings.',
-    ))
+  const errorPage = pageHtml(
+    'error',
+    'We couldn’t process that unsubscribe link.',
+    'The link may have expired or been tampered with. You can subscribe again from the home page.',
+  )
+
+  const parsed = parseToken(token)
+  if (!parsed) {
+    return respond(400, errorPage)
   }
 
-  const ok = await verifyToken(settings.email, token)
+  // Look up subscriber by id (never reveals other rows; uses service role).
+  const { data: sub, error: subErr } = await sb
+    .from('subscribers')
+    .select('id,email,email_lower,enabled')
+    .eq('id', parsed.subscriberId)
+    .maybeSingle()
+  if (subErr || !sub) {
+    return respond(400, errorPage)
+  }
+
+  const ok = await verifySig(parsed.subscriberId, sub.email_lower, parsed.sig)
   if (!ok) {
-    return respond(400, pageHtml(
-      'error',
-      'We couldn’t process that unsubscribe link.',
-      'The link may have expired or been tampered with. You can manage reminders directly in Settings.',
-    ))
+    return respond(400, errorPage)
   }
 
-  // Branch BEFORE the update so the "already off" state is distinct from
-  // the fresh-unsubscribe state. No audit row for already-off — keeps the
-  // heartbeat unpolluted by repeat clicks.
-  if (!settings.enabled) {
+  // Already off — no DB write, no audit row (keeps heartbeat clean).
+  if (!sub.enabled) {
     return respond(200, pageHtml(
       'already',
       'Reminders are already off.',
-      'You must’ve unsubscribed previously. You can re-enable any time from Settings.',
+      'You must’ve unsubscribed previously. You can subscribe again from the home page any time.',
     ), method === 'POST')
   }
 
-  await sb.from('reminder_settings').update({ enabled: false }).eq('id', 1)
-  // Audit row so the heartbeat banner sees activity and we can trace
-  // unsubscribe events alongside the daily sends.
+  await sb.from('subscribers')
+    .update({ enabled: false, unsubscribed_at: new Date().toISOString() })
+    .eq('id', sub.id)
   await sb.from('reminder_runs').insert({
+    subscriber_id: sub.id,
     due_count: 0,
     sent: false,
     skip_reason: 'unsubscribed_via_email',
@@ -211,6 +215,6 @@ Deno.serve(async (req: Request) => {
   return respond(200, pageHtml(
     'ok',
     'You’ve unsubscribed from daily reminders.',
-    'Re-enable them any time from Settings — or change your email at the same place.',
+    'Subscribe again any time from the home page.',
   ), method === 'POST')
 })

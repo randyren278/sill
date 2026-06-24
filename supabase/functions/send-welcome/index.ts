@@ -1,11 +1,11 @@
-// Sill — welcome email.
+// Sill — welcome email, per-subscriber.
 //
-// Fired one-time from Settings.tsx when reminder_settings.enabled transitions
-// false → true (and an email is present). Guarded by reminder_settings.welcomed_at
-// so toggling off/on does not re-trigger.
-//
-// Public endpoint. Gated by WELCOME_SHARED_SECRET in the x-welcome-secret header,
-// since this lives behind anon-key writes in the single-tenant trust model.
+// Public endpoint. Gated by WELCOME_SHARED_SECRET in the x-welcome-secret
+// header (anyone with the anon key would otherwise be able to trigger it).
+// Takes { email } in the POST body, looks up the subscriber row by
+// email_lower, sends the welcome via Resend if welcomed_at IS NULL and
+// enabled = true, then stamps welcomed_at. Idempotent — repeat calls for
+// an already-welcomed subscriber are no-ops.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
 
@@ -38,22 +38,22 @@ function base64url(bytes: Uint8Array): string {
   return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 }
 
-async function unsubscribeUrl(email: string): Promise<string> {
+async function unsubscribeUrl(subscriberId: string, email: string): Promise<string> {
   const key = await hmacKey()
-  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(email))
-  return APP_URL + '/api/unsubscribe?token=' + encodeURIComponent(base64url(new Uint8Array(sig)))
+  const payload = subscriberId + ':' + email.toLowerCase()
+  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(payload))
+  const token = subscriberId + '.' + base64url(new Uint8Array(sig))
+  return APP_URL + '/api/unsubscribe?token=' + encodeURIComponent(token)
 }
 
 function fmtFullDate(d: Date): string {
-  // "Tuesday, June 23"
   const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']
   const months = ['January','February','March','April','May','June','July','August','September','October','November','December']
   return days[d.getUTCDay()] + ', ' + months[d.getUTCMonth()] + ' ' + d.getUTCDate()
 }
 
-// Shared head — dark-mode aware. The same <style> block ships in both the
-// digest and the welcome email so the visual identity is consistent.
-// Palette locked by 3-lens audit (contrast, brand-fidelity, email-client).
+// Shared head — same as the digest's headHtml. Three copies of ~30 lines of
+// CSS is acceptable for Edge Functions (no bundler).
 function headHtml(title: string): string {
   return (
     '<!doctype html><html lang="en"><head>' +
@@ -77,9 +77,8 @@ function headHtml(title: string): string {
       '.sill-muted{color:#b6cf90!important;}' +
       '.sill-faint{color:#8aa589!important;}' +
       '.sill-divider-td{border-color:#264536!important;}' +
-      '.sill-overdue{color:#e09a6b!important;}' +
-      '.sill-soon{color:#e6bd60!important;}' +
       '.sill-happy{color:#9bc586!important;}' +
+      '.sill-overdue{color:#e09a6b!important;}' +
       '.sill-cta{background-color:#1e3d2f!important;color:#eef0e4!important;}' +
     '}' +
     '</style></head>'
@@ -113,40 +112,29 @@ function welcomeBody(opts: {
     '<div aria-hidden="true" style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;mso-hide:all;">Welcome to Sill — your morning plant digest starts tomorrow.&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;</div>' +
     '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" bgcolor="#f1eee2" class="sill-page-bg" style="background-color:#f1eee2;">' +
     '<tr><td align="center" valign="top" style="padding:32px 16px 48px 16px;">' +
-
-    // 560 card
     '<table role="presentation" width="560" cellspacing="0" cellpadding="0" border="0" class="sill-card" style="width:100%;max-width:560px;background-color:#fbfaf5;border-radius:18px;border:1px solid #e6e3d7;">' +
-
-    // header
     '<tr><td align="center" class="sill-header sill-divider-td" style="padding:36px 32px 28px;border-bottom:1px solid #e6e3d7;">' +
     '<img src="' + APP_URL + '/icon-email.png" width="64" height="64" alt="Sill" style="display:block;border-radius:14px;image-rendering:pixelated;margin:0 auto 18px auto;">' +
     '<p class="sill-ink" style="margin:0 0 10px 0;font-family:\'Newsreader\',Georgia,serif;font-size:30px;font-weight:700;letter-spacing:-0.01em;line-height:1;color:#1b211c;">Sill</p>' +
     '<p class="sill-happy" style="margin:0 0 6px 0;font-family:ui-monospace,\'SF Mono\',Menlo,monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.18em;color:#3f6b4a;">Welcome</p>' +
     '<p class="sill-faint" style="margin:0;font-family:ui-monospace,\'SF Mono\',Menlo,monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.18em;color:#858b80;">' + opts.todayLabel + '</p>' +
     '</td></tr>' +
-
-    // body
     '<tr><td class="sill-padded" style="padding:28px 32px 8px;">' +
     '<p class="sill-ink" style="margin:0 0 16px 0;font-family:\'Newsreader\',Georgia,serif;font-size:20px;line-height:1.45;color:#1b211c;">You’re in. Tomorrow morning at 9 am Pacific, you’ll get your first daily roster — what needs water, what’s coming up, what’s looking healthy.</p>' +
     '<p class="sill-muted" style="margin:0 0 22px 0;font-family:-apple-system,\'Hanken Grotesk\',BlinkMacSystemFont,\'Segoe UI\',sans-serif;font-size:14px;line-height:1.55;color:#6b736a;">Each email carries every plant grouped by status, plus a fun fact about one of your plants. One message a day, never more. Unsubscribe from any email in a single click.</p>' +
     '</td></tr>' +
-
-    // preview block
     (opts.samplePlants.length > 0
       ? '<tr><td class="sill-padded" style="padding:0 32px 8px;">' +
         '<p class="sill-faint" style="margin:0 0 10px 0;font-family:ui-monospace,\'SF Mono\',Menlo,monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.18em;color:#858b80;">A taste of tomorrow</p>' +
         '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">' + sampleRows + '</table>' +
         '</td></tr>'
       : '') +
-
-    // footer
     '<tr><td align="center" class="sill-footer sill-divider-td" style="padding:28px 32px 32px;border-top:1px solid #e6e3d7;">' +
     '<a href="' + APP_URL + '" class="sill-cta" style="display:inline-block;background-color:#1e3d2f;color:#eef0e4;font-family:-apple-system,\'Hanken Grotesk\',BlinkMacSystemFont,\'Segoe UI\',sans-serif;font-size:14px;font-weight:600;text-decoration:none;padding:11px 22px;border-radius:999px;mso-padding-alt:11px 22px;">Open Sill</a>' +
     '<p class="sill-faint" style="margin:14px 0 0 0;font-family:-apple-system,\'Hanken Grotesk\',BlinkMacSystemFont,\'Segoe UI\',sans-serif;font-size:11px;color:#858b80;">' +
-    '<a href="' + APP_URL + '/settings" class="sill-faint" style="color:#858b80;text-decoration:none;">Manage reminders →</a> &nbsp;·&nbsp; <a href="' + opts.unsubUrl + '" class="sill-faint" style="color:#858b80;text-decoration:none;">Unsubscribe</a>' +
+    '<a href="' + opts.unsubUrl + '" class="sill-faint" style="color:#858b80;text-decoration:none;">Unsubscribe</a>' +
     '</p>' +
     '</td></tr>' +
-
     '</table>' +
     '</td></tr></table>' +
     '</body></html>'
@@ -156,8 +144,6 @@ function welcomeBody(opts: {
 type Plant = { id: string; name: string; loc: string; last_watered: string; freq_days: number }
 
 function pickSamplePlants(plants: Plant[], todayUtc: Date): { name: string; loc: string; dot: string; status: 'soon' | 'happy'; meta: string }[] {
-  // For the welcome email: a tiny preview, max 2 plants — one due-soon-ish and
-  // one happy if available, else whatever exists, capped at 2.
   if (plants.length === 0) return []
   const todayIso = todayUtc.toISOString().slice(0, 10)
   const enriched = plants.map((p) => {
@@ -181,8 +167,14 @@ function pickSamplePlants(plants: Plant[], todayUtc: Date): { name: string; loc:
   })
 }
 
-async function logRun(row: { skip_reason: string; error?: string | null; resend_id?: string | null }) {
+async function logRun(row: {
+  subscriber_id?: string | null
+  skip_reason: string
+  error?: string | null
+  resend_id?: string | null
+}) {
   await sb.from('reminder_runs').insert({
+    subscriber_id: row.subscriber_id ?? null,
     due_count: 0,
     sent: row.skip_reason === 'welcome_sent',
     skip_reason: row.skip_reason,
@@ -201,30 +193,41 @@ Deno.serve(async (req: Request) => {
     return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401, headers: { 'content-type': 'application/json' } })
   }
 
-  const { data: settings, error: sErr } = await sb
-    .from('reminder_settings')
-    .select('id,email,enabled,welcomed_at')
-    .eq('id', 1)
-    .single()
-  if (sErr) {
-    await logRun({ skip_reason: 'welcome_failed', error: sErr.message })
-    return new Response(JSON.stringify({ skipped: 'settings_read_failed' }), { status: 200 })
+  const body = await req.json().catch(() => ({})) as { email?: string }
+  const email = (body.email ?? '').trim()
+  if (!email || email.indexOf('@') < 0) {
+    await logRun({ skip_reason: 'welcome_failed', error: 'invalid_email' })
+    return new Response(JSON.stringify({ error: 'invalid_email' }), { status: 400 })
   }
-  if (!settings?.enabled || !settings?.email) {
-    await logRun({ skip_reason: 'welcome_skipped_not_enabled' })
+
+  const { data: sub, error: subErr } = await sb
+    .from('subscribers')
+    .select('id,email,enabled,welcomed_at')
+    .eq('email_lower', email.toLowerCase())
+    .maybeSingle()
+  if (subErr) {
+    await logRun({ skip_reason: 'welcome_failed', error: subErr.message })
+    return new Response(JSON.stringify({ error: 'lookup_failed' }), { status: 200 })
+  }
+  if (!sub) {
+    await logRun({ skip_reason: 'welcome_skipped_not_subscribed' })
+    return new Response(JSON.stringify({ skipped: 'not_subscribed' }), { status: 200 })
+  }
+  if (!sub.enabled) {
+    await logRun({ subscriber_id: sub.id, skip_reason: 'welcome_skipped_not_enabled' })
     return new Response(JSON.stringify({ skipped: 'not_enabled' }), { status: 200 })
   }
-  if (settings.welcomed_at) {
-    await logRun({ skip_reason: 'welcome_skipped_already_welcomed' })
+  if (sub.welcomed_at) {
+    await logRun({ subscriber_id: sub.id, skip_reason: 'welcome_skipped_already_welcomed' })
     return new Response(JSON.stringify({ skipped: 'already_welcomed' }), { status: 200 })
   }
 
   if (!RESEND_API_KEY) {
-    await logRun({ skip_reason: 'welcome_failed', error: 'missing_resend_key' })
+    await logRun({ subscriber_id: sub.id, skip_reason: 'welcome_failed', error: 'missing_resend_key' })
     return new Response(JSON.stringify({ skipped: 'missing_resend_key' }), { status: 200 })
   }
   if (!UNSUBSCRIBE_SECRET) {
-    await logRun({ skip_reason: 'welcome_failed', error: 'missing_unsubscribe_secret' })
+    await logRun({ subscriber_id: sub.id, skip_reason: 'welcome_failed', error: 'missing_unsubscribe_secret' })
     return new Response(JSON.stringify({ skipped: 'missing_unsubscribe_secret' }), { status: 200 })
   }
 
@@ -234,7 +237,7 @@ Deno.serve(async (req: Request) => {
 
   const today = new Date()
   const samplePlants = pickSamplePlants((plants ?? []) as Plant[], today)
-  const unsubUrl = await unsubscribeUrl(settings.email)
+  const unsubUrl = await unsubscribeUrl(sub.id, sub.email)
 
   const html = headHtml('Welcome to Sill') + welcomeBody({
     unsubUrl,
@@ -247,7 +250,7 @@ Deno.serve(async (req: Request) => {
     headers: { Authorization: 'Bearer ' + RESEND_API_KEY, 'content-type': 'application/json' },
     body: JSON.stringify({
       from: SENDER,
-      to: settings.email,
+      to: sub.email,
       subject: 'Welcome to Sill 🌿',
       html,
       headers: {
@@ -256,15 +259,15 @@ Deno.serve(async (req: Request) => {
       },
     }),
   })
-  const body = await resp.json().catch(() => ({}))
+  const respBody = await resp.json().catch(() => ({}))
   if (!resp.ok) {
-    await logRun({ skip_reason: 'welcome_failed', error: JSON.stringify(body).slice(0, 1024) })
-    return new Response(JSON.stringify({ sent: false, error: body }), { status: 200 })
+    await logRun({ subscriber_id: sub.id, skip_reason: 'welcome_failed', error: JSON.stringify(respBody).slice(0, 1024) })
+    return new Response(JSON.stringify({ sent: false, error: respBody }), { status: 200 })
   }
 
-  // Stamp welcomed_at so re-toggling enabled doesn't re-trigger.
-  await sb.from('reminder_settings').update({ welcomed_at: new Date().toISOString() }).eq('id', 1)
-  await logRun({ skip_reason: 'welcome_sent', resend_id: (body as { id?: string }).id ?? null })
+  const resendId = (respBody as { id?: string }).id ?? null
+  await sb.from('subscribers').update({ welcomed_at: new Date().toISOString() }).eq('id', sub.id)
+  await logRun({ subscriber_id: sub.id, skip_reason: 'welcome_sent', resend_id: resendId })
 
-  return new Response(JSON.stringify({ sent: true, resend_id: (body as { id?: string }).id }), { status: 200 })
+  return new Response(JSON.stringify({ sent: true, resend_id: resendId }), { status: 200 })
 })
