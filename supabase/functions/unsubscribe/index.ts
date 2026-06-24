@@ -7,6 +7,13 @@
 //   GET  /?token=<base64url(hmac)>   →  HTML confirmation page (200) or error page (400)
 //   POST /?token=<base64url(hmac)>   →  empty 200 / 400  (RFC 8058 one-click)
 //
+// Three landing states share the same email-shell template (560 card, dark
+// mode @media, responsive breakpoint, locked palette) so the inbox-click →
+// landing transition feels seamless:
+//   - "Just unsubscribed"   — eyebrow REMINDERS OFF in happy-green
+//   - "Already unsubscribed" — eyebrow ALREADY OFF in muted gray
+//   - "Invalid / expired"    — eyebrow UNSUBSCRIBE FAILED in overdue-orange
+//
 // The single-tenant trust model means the only "user" is the owner; the
 // token is a permission-bearer, not an identity. The HMAC is computed
 // over the recipient email using UNSUBSCRIBE_SECRET, so no token table
@@ -34,12 +41,6 @@ async function hmacKey(): Promise<CryptoKey> {
   return cachedKey
 }
 
-function base64url(bytes: Uint8Array): string {
-  let bin = ''
-  for (const b of bytes) bin += String.fromCharCode(b)
-  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
-}
-
 function fromBase64url(s: string): Uint8Array {
   const pad = s.length % 4 === 0 ? '' : '='.repeat(4 - (s.length % 4))
   const bin = atob(s.replace(/-/g, '+').replace(/_/g, '/') + pad)
@@ -56,25 +57,88 @@ async function verifyToken(email: string, token: string): Promise<boolean> {
   return crypto.subtle.verify('HMAC', key, bytes, new TextEncoder().encode(email))
 }
 
-// Confirmation page — matches the digest email's visual style so the
-// transition from inbox click to landing page feels seamless.
-function pageHtml(opts: { ok: boolean; message: string; subtext?: string }): string {
-  const accent = opts.ok ? '#3f6b4a' : '#b5613a'
+function fmtFullDate(d: Date): string {
+  const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December']
+  return days[d.getUTCDay()] + ', ' + months[d.getUTCMonth()] + ' ' + d.getUTCDate()
+}
+
+// Shared head — copies of this also live in send-watering-reminder and
+// send-welcome. Three copies of ~30 lines of CSS is acceptable for
+// Edge Functions (no shared-module support without a bundler).
+function headHtml(title: string): string {
   return (
-    '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
-    '<title>Sill — ' + (opts.ok ? 'Unsubscribed' : 'Unsubscribe failed') + '</title></head>' +
-    '<body style="font-family:-apple-system,sans-serif;background:#f3f1e9;margin:0;padding:48px 24px;min-height:100vh;color:#1b211c;">' +
-    '<table role="presentation" style="max-width:480px;margin:0 auto;background:#fbfaf5;border:1px solid #e6e3d7;border-radius:18px;padding:36px;">' +
-    '<tr><td>' +
-    '<div style="margin-bottom:14px;"><img src="' + APP_URL + '/icon-email.png" width="56" height="56" alt="Sill" style="display:block;border-radius:14px;background:#1e3d2f;padding:6px;image-rendering:pixelated;"/></div>' +
-    '<div style="font-family:\'Newsreader\',Georgia,serif;font-size:28px;color:#1b211c;line-height:1.1;letter-spacing:-.01em;margin-bottom:6px;">Sill</div>' +
-    '<div style="font-family:ui-monospace,monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:' + accent + ';margin-top:18px;">' +
-    (opts.ok ? 'Reminders off' : 'Couldn’t unsubscribe') +
-    '</div>' +
-    '<div style="font-size:17px;color:#1b211c;margin-top:8px;line-height:1.4;">' + opts.message + '</div>' +
-    (opts.subtext ? '<div style="font-size:13px;color:#6b736a;margin-top:14px;line-height:1.5;">' + opts.subtext + '</div>' : '') +
-    '<div style="margin-top:26px;"><a href="' + APP_URL + '/settings" style="display:inline-block;padding:11px 22px;background:#1e3d2f;color:#eef0e4;border-radius:999px;text-decoration:none;font-weight:600;font-size:14px;">Open Sill settings</a></div>' +
-    '</td></tr></table></body></html>'
+    '<!doctype html><html lang="en"><head>' +
+    '<meta charset="utf-8">' +
+    '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+    '<meta name="color-scheme" content="light dark">' +
+    '<meta name="supported-color-schemes" content="light dark">' +
+    '<meta name="format-detection" content="telephone=no, date=no, address=no, email=no, url=no">' +
+    '<title>' + title + '</title>' +
+    '<style>' +
+    '@media only screen and (max-width:600px){' +
+      '.sill-card{width:100%!important;max-width:100%!important;}' +
+      '.sill-padded{padding:24px 18px!important;}' +
+      '.sill-header{padding:32px 20px 22px!important;}' +
+      '.sill-footer{padding:20px 20px 28px!important;}' +
+    '}' +
+    '@media (prefers-color-scheme: dark){' +
+      'body, .sill-page-bg{background-color:#10180f!important;}' +
+      '.sill-card{background-color:#1f2d26!important;border-color:#264536!important;}' +
+      '.sill-ink{color:#eef0e4!important;}' +
+      '.sill-muted{color:#b6cf90!important;}' +
+      '.sill-faint{color:#8aa589!important;}' +
+      '.sill-divider-td{border-color:#264536!important;}' +
+      '.sill-happy{color:#9bc586!important;}' +
+      '.sill-overdue{color:#e09a6b!important;}' +
+      '.sill-cta{background-color:#1e3d2f!important;color:#eef0e4!important;}' +
+    '}' +
+    '</style></head>'
+  )
+}
+
+type Variant = 'ok' | 'already' | 'error'
+
+function eyebrowFor(v: Variant): { text: string; color: string; cls: string } {
+  if (v === 'ok')      return { text: 'Reminders off',     color: '#3f6b4a', cls: 'sill-happy' }
+  if (v === 'already') return { text: 'Already off',        color: '#858b80', cls: 'sill-faint' }
+  return                       { text: 'Unsubscribe failed', color: '#b5613a', cls: 'sill-overdue' }
+}
+
+function pageHtml(v: Variant, message: string, subtext: string): string {
+  const eb = eyebrowFor(v)
+  const dateLabel = fmtFullDate(new Date())
+  return (
+    headHtml('Sill — ' + (v === 'error' ? 'Unsubscribe failed' : 'Unsubscribed')) +
+    '<body class="sill-page-bg" style="margin:0;padding:0;background-color:#f1eee2;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;">' +
+    '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" bgcolor="#f1eee2" class="sill-page-bg" style="background-color:#f1eee2;">' +
+    '<tr><td align="center" valign="top" style="padding:32px 16px 48px 16px;">' +
+
+    // 560 card
+    '<table role="presentation" width="560" cellspacing="0" cellpadding="0" border="0" class="sill-card" style="width:100%;max-width:560px;background-color:#fbfaf5;border-radius:18px;border:1px solid #e6e3d7;">' +
+
+    // header
+    '<tr><td align="center" class="sill-header sill-divider-td" style="padding:36px 32px 28px 32px;border-bottom:1px solid #e6e3d7;">' +
+    '<img src="' + APP_URL + '/icon-email.png" width="64" height="64" alt="Sill" style="display:block;border-radius:14px;image-rendering:pixelated;margin:0 auto 18px auto;">' +
+    '<p class="sill-ink" style="margin:0 0 10px 0;font-family:\'Newsreader\',Georgia,serif;font-size:30px;font-weight:700;letter-spacing:-0.01em;line-height:1;color:#1b211c;">Sill</p>' +
+    '<p class="' + eb.cls + '" style="margin:0 0 6px 0;font-family:ui-monospace,\'SF Mono\',Menlo,monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.18em;color:' + eb.color + ';">' + eb.text + '</p>' +
+    '<p class="sill-faint" style="margin:0;font-family:ui-monospace,\'SF Mono\',Menlo,monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.18em;color:#858b80;">' + dateLabel + '</p>' +
+    '</td></tr>' +
+
+    // body
+    '<tr><td class="sill-padded" style="padding:28px 32px 8px 32px;">' +
+    '<p class="sill-ink" style="margin:0 0 14px 0;font-family:\'Newsreader\',Georgia,serif;font-size:20px;line-height:1.45;color:#1b211c;">' + message + '</p>' +
+    '<p class="sill-muted" style="margin:0 0 22px 0;font-family:-apple-system,\'Hanken Grotesk\',BlinkMacSystemFont,\'Segoe UI\',sans-serif;font-size:14px;line-height:1.55;color:#6b736a;">' + subtext + '</p>' +
+    '</td></tr>' +
+
+    // footer (CTA)
+    '<tr><td align="center" class="sill-footer sill-divider-td" style="padding:22px 32px 32px 32px;border-top:1px solid #e6e3d7;">' +
+    '<a href="' + APP_URL + '/settings" class="sill-cta" style="display:inline-block;background-color:#1e3d2f;color:#eef0e4;font-family:-apple-system,\'Hanken Grotesk\',BlinkMacSystemFont,\'Segoe UI\',sans-serif;font-size:14px;font-weight:600;text-decoration:none;padding:11px 22px;border-radius:999px;mso-padding-alt:11px 22px;">Open Sill settings</a>' +
+    '</td></tr>' +
+
+    '</table>' +
+    '</td></tr></table>' +
+    '</body></html>'
   )
 }
 
@@ -87,7 +151,6 @@ Deno.serve(async (req: Request) => {
     return new Response('method not allowed', { status: 405 })
   }
 
-  // Read current settings (we need the email to verify the token against).
   const { data: settings, error: sErr } = await sb
     .from('reminder_settings')
     .select('id,email,enabled')
@@ -109,36 +172,45 @@ Deno.serve(async (req: Request) => {
   }
 
   if (sErr || !settings?.email) {
-    return respond(400, pageHtml({
-      ok: false,
-      message: 'We couldn’t process that unsubscribe link.',
-      subtext: 'The link may have expired. You can manage reminders directly in Settings.',
-    }))
+    return respond(400, pageHtml(
+      'error',
+      'We couldn’t process that unsubscribe link.',
+      'The link may have expired. You can manage reminders directly in Settings.',
+    ))
   }
 
   const ok = await verifyToken(settings.email, token)
   if (!ok) {
-    return respond(400, pageHtml({
-      ok: false,
-      message: 'We couldn’t process that unsubscribe link.',
-      subtext: 'The link may have expired or been tampered with. You can manage reminders directly in Settings.',
-    }))
+    return respond(400, pageHtml(
+      'error',
+      'We couldn’t process that unsubscribe link.',
+      'The link may have expired or been tampered with. You can manage reminders directly in Settings.',
+    ))
   }
 
-  if (settings.enabled) {
-    await sb.from('reminder_settings').update({ enabled: false }).eq('id', 1)
-    // Audit row so the heartbeat banner sees activity and we can trace
-    // unsubscribe events alongside the daily sends.
-    await sb.from('reminder_runs').insert({
-      due_count: 0,
-      sent: false,
-      skip_reason: 'unsubscribed_via_email',
-    })
+  // Branch BEFORE the update so the "already off" state is distinct from
+  // the fresh-unsubscribe state. No audit row for already-off — keeps the
+  // heartbeat unpolluted by repeat clicks.
+  if (!settings.enabled) {
+    return respond(200, pageHtml(
+      'already',
+      'Reminders are already off.',
+      'You must’ve unsubscribed previously. You can re-enable any time from Settings.',
+    ), method === 'POST')
   }
 
-  return respond(200, pageHtml({
-    ok: true,
-    message: 'You’ve unsubscribed from daily reminders.',
-    subtext: 'Re-enable them any time from Settings.',
-  }), method === 'POST')
+  await sb.from('reminder_settings').update({ enabled: false }).eq('id', 1)
+  // Audit row so the heartbeat banner sees activity and we can trace
+  // unsubscribe events alongside the daily sends.
+  await sb.from('reminder_runs').insert({
+    due_count: 0,
+    sent: false,
+    skip_reason: 'unsubscribed_via_email',
+  })
+
+  return respond(200, pageHtml(
+    'ok',
+    'You’ve unsubscribed from daily reminders.',
+    'Re-enable them any time from Settings — or change your email at the same place.',
+  ), method === 'POST')
 })
