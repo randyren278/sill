@@ -80,9 +80,26 @@ The `CRON_SHARED_SECRET` must match the literal embedded inside the `cron.schedu
 - Open `/settings` in Sill.
 - Enter your email, toggle on, Save.
 
+### What lands in your inbox
+
+A daily roster digest: every plant grouped into **Needs water** (overdue + due today), **Due soon** (within 2 days), and **Happy** (3+ days out). Empty groups are omitted. The subject leads with the most actionable count — `"3 plants need water"`, falling back to `"2 plants due soon"`, then `"All N plants happy 🌿"` when everything's fine. The function still sends one email per day even when nothing is due, so you know reminders are alive.
+
+The body has a header pixel-art plant icon (served from `public/icon-email.png`) sitting on a dark-green tile, then the Sill wordmark, summary line, status sections with colored dots, and an "Open Sill" pill button.
+
+### Sender avatar (Apple Mail / iCloud / Fastmail — free)
+
+The circular profile picture next to `reminders@pleasepleasepleasewater.me` in the recipient's inbox is sourced from [Gravatar](https://gravatar.com) by these clients.
+
+**One-time setup:**
+1. Sign up at gravatar.com using `reminders@pleasepleasepleasewater.me`.
+2. Upload `public/favicon-180.png` (or any 256+ px square crop of the Sill icon).
+3. Click the verification link sent to the address. Apple Mail will start showing the avatar within ~24h of the next send.
+
+**Gmail** ignores Gravatar — it shows a sender avatar only when the sending domain publishes a [BIMI](https://bimigroup.org/) DNS record AND has a paid Verified Mark Certificate (~$500–1500/yr). That's why the email body itself renders a 64×64 brand image up top: even without BIMI, Gmail readers see the icon inline.
+
 ### Reliability guardrails
 
-- The Edge Function ALWAYS writes one row to `reminder_runs`, with `sent: true|false` plus a `skip_reason` (`disabled` / `rate_limited` / `no_due` / `missing_resend_key`) or an `error`. The Dashboard's yellow heartbeat banner flips on when no row has landed in the last 30 hours — so if Supabase auto-pauses the free-tier project, you find out.
+- The Edge Function ALWAYS writes one row to `reminder_runs`, with `sent: true|false` plus a `skip_reason` (`disabled` / `rate_limited` / `missing_resend_key` / `no_plants` / `settings_read_failed` / `plants_read_failed`) or an `error`. The Dashboard's yellow heartbeat banner flips on when no row has landed in the last 30 hours — so if Supabase auto-pauses the free-tier project, you find out.
 - A hard per-day send cap is enforced inside the function (one `sent=true` row per UTC day) so a misconfigured cron loop can't burn Resend's free quota silently.
 
 ## Backup / restore
