@@ -90,6 +90,7 @@ export function Settings() {
     if (!settings) return
     setSaving(true)
     const next = { email: email.trim() || null, enabled }
+    const transitionedToEnabled = !settings.enabled && enabled && !!next.email
     const { error } = await supabase.from('reminder_settings').update(next).eq('id', 1)
     setSaving(false)
     if (error) {
@@ -98,6 +99,20 @@ export function Settings() {
     }
     setSettings({ ...settings, email: next.email, enabled: next.enabled })
     toast.show({ message: enabled ? 'Reminders on.' : 'Reminders off.' })
+
+    // Fire the welcome email when reminders are turned ON for the first time.
+    // The Edge Function is idempotent — it checks welcomed_at and skips if set.
+    if (transitionedToEnabled) {
+      const welcomeSecret = import.meta.env.VITE_WELCOME_SECRET as string | undefined
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined
+      if (welcomeSecret && supabaseUrl) {
+        // Fire and forget — toast already shown, errors stay silent.
+        fetch(supabaseUrl + '/functions/v1/send-welcome', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'x-welcome-secret': welcomeSecret },
+        }).catch(() => { /* non-blocking */ })
+      }
+    }
   }
 
   const onExport = async () => {

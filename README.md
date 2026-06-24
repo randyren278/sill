@@ -106,6 +106,26 @@ Every reminder carries an HMAC-signed `/api/unsubscribe?token=...` link in its f
 
 The clean public URL `https://pleasepleasepleasewater.me/api/unsubscribe` is wired via a `vercel.json` rewrite to the Supabase Edge Function — keeps the Supabase project URL out of the email.
 
+### Welcome email
+
+When reminders are toggled on for the first time in `/settings`, a one-time welcome email fires from the `send-welcome` Edge Function (same visual family as the digest — dark-mode aware, mobile-responsive). Guarded by `reminder_settings.welcomed_at` so toggling off/on doesn't re-send.
+
+**One-time setup:** generate a shared secret (`openssl rand -hex 32`) and set it in **two** places (same value in both):
+
+```bash
+supabase secrets set WELCOME_SHARED_SECRET=<value>
+```
+
+And as a Vercel environment variable:
+
+```
+VITE_WELCOME_SECRET=<same value>
+```
+
+(The Edge Function reads `WELCOME_SHARED_SECRET`; the frontend reads `VITE_WELCOME_SECRET`. They must match.)
+
+To resend the welcome (e.g. for testing): `update public.reminder_settings set welcomed_at = null where id = 1` then toggle off + on in `/settings`.
+
 ### Reliability guardrails
 
 - The Edge Function ALWAYS writes one row to `reminder_runs`, with `sent: true|false` plus a `skip_reason` (`disabled` / `rate_limited` / `missing_resend_key` / `missing_unsubscribe_secret` / `no_plants` / `settings_read_failed` / `plants_read_failed` / `unsubscribed_via_email`) or an `error`. The Dashboard's yellow heartbeat banner flips on when no row has landed in the last 30 hours — so if Supabase auto-pauses the free-tier project, you find out.
