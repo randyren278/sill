@@ -56,7 +56,7 @@ That's it. No auth provider, no users, no email templates.
 
 ## Daily watering reminders (Phase 1a)
 
-Sill sends a daily email digest of due plants via a Supabase Edge Function triggered by `pg_cron` at 14:00 UTC.
+Sill sends a daily email digest via a Supabase Edge Function triggered by `pg_cron` at **16:00 UTC** (9am PDT in summer, 8am PST in winter — `pg_cron` doesn't honour daylight savings, so the wall-clock time shifts an hour in November).
 
 ### One-time setup
 
@@ -65,16 +65,19 @@ Sill sends a daily email digest of due plants via a Supabase Edge Function trigg
 - Add `pleasepleasepleasewater.me` (or your sender domain) and copy the DNS records into your registrar.
 - Generate an API key.
 
-**2. Set Supabase secrets** (the Edge Function reads these at runtime):
+**2. Set Supabase secrets** (the Edge Functions read these at runtime):
 
 ```bash
 supabase secrets set RESEND_API_KEY=re_...
 supabase secrets set CRON_SHARED_SECRET=<the secret embedded in the cron schedule>
+supabase secrets set UNSUBSCRIBE_SECRET=<openssl rand -hex 32>
 supabase secrets set REMINDER_SENDER='Sill <reminders@pleasepleasepleasewater.me>'
 supabase secrets set APP_URL=https://pleasepleasepleasewater.me
 ```
 
 The `CRON_SHARED_SECRET` must match the literal embedded inside the `cron.schedule` SQL — the function rejects calls without it. Rotate by re-running `cron.unschedule('send-watering-reminder')` + a fresh `cron.schedule(...)` with the new secret + `supabase secrets set CRON_SHARED_SECRET=...`.
+
+`UNSUBSCRIBE_SECRET` signs the one-click unsubscribe links in every reminder email. Rotating it invalidates every previously-sent unsubscribe link — that's the expiry mechanism. The same secret is read by both the `send-watering-reminder` function (to sign) and the `unsubscribe` function (to verify), so they must always match.
 
 **3. Enable reminders in the app.**
 - Open `/settings` in Sill.
@@ -97,9 +100,15 @@ The circular profile picture next to `reminders@pleasepleasepleasewater.me` in t
 
 **Gmail** ignores Gravatar — it shows a sender avatar only when the sending domain publishes a [BIMI](https://bimigroup.org/) DNS record AND has a paid Verified Mark Certificate (~$500–1500/yr). That's why the email body itself renders a 64×64 brand image up top: even without BIMI, Gmail readers see the icon inline.
 
+### One-click unsubscribe
+
+Every reminder carries an HMAC-signed `/api/unsubscribe?token=...` link in its footer, plus the standards-compliant `List-Unsubscribe` and `List-Unsubscribe-Post: List-Unsubscribe=One-Click` headers (RFC 8058) — Gmail and Apple Mail render a native "Unsubscribe" link next to the sender name. Clicking it flips `reminder_settings.enabled` to `false` and logs a `skip_reason: 'unsubscribed_via_email'` audit row. Re-enable from `/settings` whenever you want.
+
+The clean public URL `https://pleasepleasepleasewater.me/api/unsubscribe` is wired via a `vercel.json` rewrite to the Supabase Edge Function — keeps the Supabase project URL out of the email.
+
 ### Reliability guardrails
 
-- The Edge Function ALWAYS writes one row to `reminder_runs`, with `sent: true|false` plus a `skip_reason` (`disabled` / `rate_limited` / `missing_resend_key` / `no_plants` / `settings_read_failed` / `plants_read_failed`) or an `error`. The Dashboard's yellow heartbeat banner flips on when no row has landed in the last 30 hours — so if Supabase auto-pauses the free-tier project, you find out.
+- The Edge Function ALWAYS writes one row to `reminder_runs`, with `sent: true|false` plus a `skip_reason` (`disabled` / `rate_limited` / `missing_resend_key` / `missing_unsubscribe_secret` / `no_plants` / `settings_read_failed` / `plants_read_failed` / `unsubscribed_via_email`) or an `error`. The Dashboard's yellow heartbeat banner flips on when no row has landed in the last 30 hours — so if Supabase auto-pauses the free-tier project, you find out.
 - A hard per-day send cap is enforced inside the function (one `sent=true` row per UTC day) so a misconfigured cron loop can't burn Resend's free quota silently.
 
 ## Backup / restore

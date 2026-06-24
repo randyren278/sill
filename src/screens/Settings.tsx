@@ -230,7 +230,7 @@ export function Settings() {
           Reminders
         </div>
         <div style={{ fontSize: 14, color: colors.ink.muted, marginBottom: 16, lineHeight: 1.5 }}>
-          Daily email digest of plants that need water. Sent once at 14:00 UTC.
+          Daily roster digest, sent once at 9am Pacific (16:00 UTC).
         </div>
 
         {loadError ? (

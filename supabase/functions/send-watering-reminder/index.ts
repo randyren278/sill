@@ -1,6 +1,6 @@
 // Sill — daily watering reminder.
 //
-// Invoked by pg_cron once daily (14:00 UTC ≈ 9am ET). Behaviour:
+// Invoked by pg_cron once daily (16:00 UTC = 9am PDT / 8am PST). Behaviour:
 //
 //   1. Reject unless the caller carries x-cron-secret = CRON_SHARED_SECRET.
 //   2. Read reminder_settings (single-row, id=1). Skip if disabled or no email.
@@ -9,7 +9,8 @@
 //   4. Classify every plant (overdue / today / soon / happy) and render a
 //      full roster digest. No early-return when nothing is due — the user
 //      gets a daily heartbeat that reminders are alive.
-//   5. POST a single transactional email to Resend.
+//   5. POST a single transactional email to Resend, with RFC 8058
+//      List-Unsubscribe headers carrying an HMAC-signed unsubscribe link.
 //   6. ALWAYS write one row to reminder_runs so the heartbeat banner can
 //      detect silent stops.
 
@@ -19,6 +20,7 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? ''
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY') ?? ''
 const CRON_SHARED_SECRET = Deno.env.get('CRON_SHARED_SECRET') ?? ''
+const UNSUBSCRIBE_SECRET = Deno.env.get('UNSUBSCRIBE_SECRET') ?? ''
 const SENDER = Deno.env.get('REMINDER_SENDER') ?? 'Sill <reminders@pleasepleasepleasewater.me>'
 const APP_URL = Deno.env.get('APP_URL') ?? 'https://pleasepleasepleasewater.me'
 
@@ -51,6 +53,33 @@ function fmtDate(iso: string): string {
   return months[m - 1] + ' ' + d + (y === new Date().getUTCFullYear() ? '' : ', ' + y)
 }
 
+// HMAC-SHA256 over the recipient email — same construction the unsubscribe
+// Edge Function verifies. Module-scoped key cache avoids re-import per send.
+let cachedKey: CryptoKey | null = null
+async function hmacKey(): Promise<CryptoKey> {
+  if (cachedKey) return cachedKey
+  cachedKey = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(UNSUBSCRIBE_SECRET),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  )
+  return cachedKey
+}
+
+function base64url(bytes: Uint8Array): string {
+  let bin = ''
+  for (const b of bytes) bin += String.fromCharCode(b)
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+}
+
+async function unsubscribeUrl(email: string): Promise<string> {
+  const key = await hmacKey()
+  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(email))
+  return APP_URL + '/api/unsubscribe?token=' + encodeURIComponent(base64url(new Uint8Array(sig)))
+}
+
 type Plant = { id: string; name: string; last_watered: string; freq_days: number; loc: string }
 type Status = 'overdue' | 'today' | 'soon' | 'happy'
 type Classified = Plant & { status: Status; nextIn: number; dueDate: string }
@@ -79,7 +108,11 @@ function rowMeta(c: Classified): string {
   return c.loc + ' · next ' + fmtDate(c.dueDate)
 }
 
-function renderHtml(classified: Classified[], counts: { needs: number; soon: number; happy: number }): string {
+function renderHtml(
+  classified: Classified[],
+  counts: { needs: number; soon: number; happy: number },
+  unsubUrl: string,
+): string {
   const summary = [
     counts.needs > 0 ? counts.needs + ' need water' : null,
     counts.soon  > 0 ? counts.soon  + ' due soon'   : null,
@@ -118,7 +151,7 @@ function renderHtml(classified: Classified[], counts: { needs: number; soon: num
     '<div style="font-size:13px;color:#6b736a;margin-top:6px;">' + summary + '</div>' +
     sections +
     '<div style="margin-top:26px;"><a href="' + APP_URL + '" style="display:inline-block;padding:11px 22px;background:#1e3d2f;color:#eef0e4;border-radius:999px;text-decoration:none;font-weight:600;font-size:14px;">Open Sill</a></div>' +
-    '<div style="margin-top:18px;font-size:11px;color:#9aa093;">Manage reminders → <a href="' + APP_URL + '/settings" style="color:#6b736a;">' + APP_URL + '/settings</a></div>' +
+    '<div style="margin-top:18px;font-size:11px;color:#9aa093;">Manage in <a href="' + APP_URL + '/settings" style="color:#6b736a;">Settings</a> · <a href="' + unsubUrl + '" style="color:#6b736a;">Unsubscribe</a></div>' +
     '</td></tr></table></body></html>'
   )
 }
@@ -202,6 +235,13 @@ Deno.serve(async (req: Request) => {
     await logRun({ due_count: counts.needs, sent: false, skip_reason: 'missing_resend_key' })
     return new Response(JSON.stringify({ skipped: 'missing_resend_key' }), { status: 200 })
   }
+  if (!UNSUBSCRIBE_SECRET) {
+    await logRun({ due_count: counts.needs, sent: false, skip_reason: 'missing_unsubscribe_secret' })
+    return new Response(JSON.stringify({ skipped: 'missing_unsubscribe_secret' }), { status: 200 })
+  }
+
+  const unsubUrl = await unsubscribeUrl(settings.email)
+
   const resp = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { Authorization: 'Bearer ' + RESEND_API_KEY, 'content-type': 'application/json' },
@@ -209,7 +249,14 @@ Deno.serve(async (req: Request) => {
       from: SENDER,
       to: settings.email,
       subject,
-      html: renderHtml(classified, counts),
+      html: renderHtml(classified, counts, unsubUrl),
+      // RFC 8058 one-click headers. Gmail/Apple Mail render a native
+      // "Unsubscribe" affordance next to the sender; clicking it POSTs to
+      // the URL above without leaving the inbox.
+      headers: {
+        'List-Unsubscribe': '<' + unsubUrl + '>',
+        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+      },
     }),
   })
   const body = await resp.json().catch(() => ({}))

@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/unsubscribe",
+      "destination": "https://dftjobtwildtdfpnqqyu.supabase.co/functions/v1/unsubscribe"
+    },
+    {
+      "source": "/((?!api/|assets/|.*\\.(?:png|svg|ico|jpg|jpeg|gif|webp|txt|xml|json|js|css|woff|woff2)).*)",
+      "destination": "/index.html"
+    }
+  ]
+}
