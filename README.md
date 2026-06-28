@@ -21,12 +21,12 @@
 
 ---
 
-A small plant-watering tracker that lives at **pleasepleasepleasewater.me**. The owner curates the collection; anyone visiting waters, adds, edits, or deletes. Subscribe an email and a daily digest tells you what's thirsty.
+A small plant-watering tracker that lives at **pleasepleasepleasewater.me**. The owner curates the collection — adding, editing, watering, and deleting are owner-only, gated by a password on `/owner`. Everyone else can browse the collection, export it, and subscribe an email for a daily digest of what's thirsty.
 
 > The domain reads the way the plants would say it.
 
-> [!WARNING]
-> **Anyone visiting the live site can add, edit, or delete plants.** This is the trust model, on purpose. The only thing locked down is the subscriber list — emails are private.
+> [!NOTE]
+> **Plant edits are owner-only.** The owner unlocks a device at `/owner` by pasting a shared password (validated server-side via the `verify_owner_key` RPC, persisted in `localStorage.sill.owner`). Non-owners see a read-only UI — no Add / Water / Edit / Delete buttons, and `/plants/new` and `/plants/:id/edit` redirect away. The subscriber list is also locked down — emails are private.
 
 <p align="right"><a href="#readme-top">back to top ↑</a></p>
 
@@ -58,25 +58,48 @@ What Sill asks of a contributor:
 Once a day, every subscriber gets a digest. Three single-purpose Edge Functions, stitched together by one shared HMAC token.
 
 ```mermaid
----
-config:
-  theme: base
-  themeVariables:
-    primaryColor: '#f3f1e9'
-    primaryTextColor: '#1e3d2f'
-    primaryBorderColor: '#1e3d2f'
-    secondaryColor: '#eef0e4'
-    tertiaryColor: '#fbfaf5'
-    lineColor: '#3f6b4a'
-    actorBkg: '#fbfaf5'
-    actorBorder: '#1e3d2f'
-    actorTextColor: '#1b211c'
-    signalColor: '#3f6b4a'
-    signalTextColor: '#1b211c'
-    noteBkgColor: '#eef0e4'
-    noteBorderColor: '#1e3d2f'
-    noteTextColor: '#1b211c'
----
+%%{init: {
+  "theme": "base",
+  "themeVariables": {
+    "fontFamily": "ui-sans-serif, system-ui, sans-serif",
+    "background": "#eef0e4",
+    "primaryColor": "#fbfaf5",
+    "primaryTextColor": "#1e3d2f",
+    "primaryBorderColor": "#3f6b4a",
+    "lineColor": "#3f6b4a",
+    "actorBkg": "#fbfaf5",
+    "actorBorder": "#3f6b4a",
+    "actorTextColor": "#1e3d2f",
+    "actorLineColor": "#3f6b4a",
+    "signalColor": "#3f6b4a",
+    "signalTextColor": "#1e3d2f",
+    "labelBoxBkgColor": "#fbfaf5",
+    "labelBoxBorderColor": "#3f6b4a",
+    "labelTextColor": "#1e3d2f",
+    "loopTextColor": "#1e3d2f",
+    "noteBkgColor": "#fbfaf5",
+    "noteBorderColor": "#3f6b4a",
+    "noteTextColor": "#1e3d2f",
+    "sequenceNumberColor": "#fbfaf5"
+  }
+}}%%
+sequenceDiagram
+  autonumber
+  participant Cron as pg_cron (16:00 UTC)
+  participant Edge as send-watering-reminder
+  participant DB as Supabase Postgres
+  participant Resend
+  participant Inbox
+
+  Cron->>Edge: x-cron-secret
+  Edge->>DB: select enabled subscribers + plants
+  loop per subscriber
+    Edge->>Edge: build digest + HMAC unsubscribe token
+    Edge->>Resend: POST /emails
+    Resend-->>Inbox: deliver
+    Edge->>DB: stamp last_sent_date + log reminder_runs
+  end
+```
 sequenceDiagram
   autonumber
   participant Cron as pg_cron (16:00 UTC)
@@ -107,10 +130,10 @@ Three tables in `public`. The soil is shallow on purpose.
 ┌────────────────────┐     ┌────────────────────┐     ┌────────────────────┐
 │  plants            │     │  subscribers       │     │  reminder_runs     │
 │  ──────────        │     │  ──────────        │     │  ──────────        │
-│  open trust        │     │  RLS-locked        │     │  audit log         │
-│  RLS using (true)  │     │  no anon SELECT    │     │  one row per send  │
-│  read/write/delete │     │  in: subscribe()   │     │  fuels heartbeat   │
-│  for anyone        │     │  out: count() RPC  │     │  banner            │
+│  read: open        │     │  RLS-locked        │     │  audit log         │
+│  write: owner-only │     │  no anon SELECT    │     │  one row per send  │
+│  via plant_upsert  │     │  in: subscribe()   │     │  fuels heartbeat   │
+│  /plant_remove RPC │     │  out: count() RPC  │     │  banner            │
 └────────────────────┘     └────────────────────┘     └────────────────────┘
 ```
 
@@ -238,7 +261,7 @@ There is a pre-existing typo (`WLsCo` where it should be `WLsC`) in `.env.local.
 If a feature request seems to require any of these, raise it first — the answer might be _"we don't do that here."_
 
 - Not multi-tenant. One plant collection, shared by all visitors.
-- No auth. Anyone can edit plants. Intentional.
+- No accounts, no login screen. Plant edits are gated by a single shared password the owner pastes on `/owner` (stored in `localStorage`, validated by the `verify_owner_key` RPC). That's the entire auth story — intentional.
 - No manage-my-subscription page. Subscribe and unsubscribe are the entire surface.
 - No double opt-in. Single opt-in is fine for this trust model.
 - No GitHub Actions CI. Playwright is local-only for now.
