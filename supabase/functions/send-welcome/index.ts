@@ -17,6 +17,10 @@ const UNSUBSCRIBE_SECRET = Deno.env.get('UNSUBSCRIBE_SECRET') ?? ''
 const SENDER = Deno.env.get('REMINDER_SENDER') ?? 'Sill <reminders@pleasepleasepleasewater.me>'
 const APP_URL = Deno.env.get('APP_URL') ?? 'https://pleasepleasepleasewater.me'
 
+// Inline brand icon as a CID attachment — see send-watering-reminder for why.
+const LOGO_CID = 'sill-logo'
+const LOGO_URL = (Deno.env.get('APP_URL') ?? 'https://pleasepleasepleasewater.me') + '/favicon-180.png'
+
 const sb = createClient(SUPABASE_URL, SERVICE_ROLE)
 
 let cachedKey: CryptoKey | null = null
@@ -120,7 +124,7 @@ function welcomeBody(opts: {
     '<tr><td align="center" class="sill-header sill-divider-td" style="padding:36px 32px 28px;border-bottom:1px solid #e6e3d7;">' +
     '<table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:0 auto 18px auto;border-collapse:separate;">' +
     '<tr><td bgcolor="#fbfaf5" width="64" height="64" style="background-color:#fbfaf5;border:1px solid #1e3d2f;border-radius:14px;padding:0;line-height:0;font-size:0;">' +
-    '<img src="' + APP_URL + '/favicon-180.png" width="64" height="64" alt="Sill" style="display:block;border-radius:14px;image-rendering:pixelated;">' +
+    '<img src="cid:' + LOGO_CID + '" width="64" height="64" alt="Sill" style="display:block;border-radius:14px;image-rendering:pixelated;">' +
     '</td></tr></table>' +
     '<p class="sill-ink" style="margin:0 0 10px 0;font-family:\'Newsreader\',Georgia,serif;font-size:30px;font-weight:700;letter-spacing:-0.01em;line-height:1;color:#1b211c;">Sill</p>' +
     '<p class="sill-happy" style="margin:0 0 6px 0;font-family:ui-monospace,\'SF Mono\',Menlo,monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.18em;color:#3f6b4a;">Welcome</p>' +
@@ -264,6 +268,13 @@ Deno.serve(async (req: Request) => {
         'List-Unsubscribe': '<' + listUnsubUrl + '>',
         'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
       },
+      attachments: [
+        {
+          filename: 'sill-logo.png',
+          path: LOGO_URL,
+          content_id: LOGO_CID,
+        },
+      ],
     }),
   })
   const respBody = await resp.json().catch(() => ({}))

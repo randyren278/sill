@@ -30,6 +30,14 @@ const UNSUBSCRIBE_SECRET = Deno.env.get('UNSUBSCRIBE_SECRET') ?? ''
 const SENDER = Deno.env.get('REMINDER_SENDER') ?? 'Sill <reminders@pleasepleasepleasewater.me>'
 const APP_URL = Deno.env.get('APP_URL') ?? 'https://pleasepleasepleasewater.me'
 
+// Embed the brand icon inline (CID attachment) instead of a remote <img src>.
+// Gmail proxies remote images and frequently silently fails to load them for
+// first-touch senders, leaving a broken-image tile in the header. Resend
+// fetches `path` at send time and embeds the bytes into the MIME message, so
+// no client-side proxy fetch is required.
+const LOGO_CID = 'sill-logo'
+const LOGO_URL = (Deno.env.get('APP_URL') ?? 'https://pleasepleasepleasewater.me') + '/favicon-180.png'
+
 const sb = createClient(SUPABASE_URL, SERVICE_ROLE)
 
 function todayUtcIso(): string {
@@ -254,7 +262,7 @@ function renderHtml(
     '<tr><td align="center" class="sill-header sill-divider-td" style="padding:36px 32px 28px 32px;border-bottom:1px solid #e6e3d7;">' +
     '<table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:0 auto 18px auto;border-collapse:separate;">' +
     '<tr><td bgcolor="#fbfaf5" width="64" height="64" style="background-color:#fbfaf5;border:1px solid #1e3d2f;border-radius:14px;padding:0;line-height:0;font-size:0;">' +
-    '<img src="' + APP_URL + '/favicon-180.png" width="64" height="64" alt="Sill" style="display:block;border-radius:14px;image-rendering:pixelated;">' +
+    '<img src="cid:' + LOGO_CID + '" width="64" height="64" alt="Sill" style="display:block;border-radius:14px;image-rendering:pixelated;">' +
     '</td></tr></table>' +
     '<p class="sill-ink" style="margin:0 0 10px 0;font-family:\'Newsreader\',Georgia,serif;font-size:30px;font-weight:700;letter-spacing:-0.01em;line-height:1;color:#1b211c;">Sill</p>' +
     '<p class="sill-muted" style="margin:0 0 6px 0;font-family:-apple-system,\'Hanken Grotesk\',BlinkMacSystemFont,\'Segoe UI\',sans-serif;font-size:13px;color:#6b736a;line-height:1.5;">' + summary + '</p>' +
@@ -381,6 +389,13 @@ Deno.serve(async (req: Request) => {
           'List-Unsubscribe': '<' + listUnsubUrl + '>',
           'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
         },
+        attachments: [
+          {
+            filename: 'sill-logo.png',
+            path: LOGO_URL,
+            content_id: LOGO_CID,
+          },
+        ],
       }),
     })
     const body = await resp.json().catch(() => ({}))
