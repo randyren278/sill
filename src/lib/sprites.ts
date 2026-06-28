@@ -3,7 +3,8 @@ import { greenSets } from './palette'
 
 // Pixel-art row maps. 18 rows × 18 cols; each char maps to a palette key:
 //   D=darkest, G=mid, L=light, H=highlight, S=stem, T/r=pot front, t=pot side, o=pot rim,
-//   M=moss pole (brown), W=water (jar), w=water highlight, R=root (white)
+//   M=moss pole (brown), W=water (jar), w=water highlight, R=root (white),
+//   P=bloom mid (lavender), p=bloom shadow, F=bloom highlight (light lavender) — bush archetype
 //
 // Keyed by `${arch}-${size}`. Lookup falls back from the exact key to `${arch}-md`,
 // then to `broad-md` as a final safety net.
@@ -21,6 +22,13 @@ export const sprites: Record<string, string[]> = {
   'broad-xs': ['                  ', '                  ', '     DD     DD    ', '    DGLD   DGLD   ', '    DLHD   DLHD   ', '     DSD   DSD    ', '      SS   SS     ', '       SS SS      ', '        SSS       ', '     DDDDDDDD     ', '     DWWwWWWD     ', '     DWWRWWWD     ', '     DWRWWWRD     ', '     DWWWRWWD     ', '     DRWWWWRD     ', '     DWWWWWWD     ', '     DDDDDDDD     ', '                  '],
   'cane-xl':  ['    D        D    ', '   DLD      DLD   ', '   DLLD    DLLD   ', '    DLD    DLD    ', '    DSD    DSD    ', '   D S      S D   ', '  DLD S    S DLD  ', '  DLLD S  S DLLD  ', '   DLD S  S DLD   ', '    D  S  S  D    ', '       S  S       ', '       S  S       ', '        SS        ', '      rrTTrr      ', '      TTTTTT      ', '      tTTTTt      ', '      ttTTtt      ', '       tooo       '],
   'fan-xl':   ['D   D   DD   D   D', 'LD  LD  LL  DL  DL', ' LD  LD LL DL  DL ', '  LD  LDLLDL  DL  ', '   LD  LDDL  DL   ', '    LD LDDL DL    ', '     LDDLLDDL     ', '      LDLLDL      ', '        GG        ', '        GG        ', '        DD        ', '        SS        ', '        SS        ', '     rrTTrr       ', '     TTTTTT       ', '     tTTTTt       ', '     ttTTtt       ', '      tooo        '],
+
+  // ── hydrangea (bush archetype) — 5 sizes hand-designed, lavender mophead blooms ──
+  'bush-xs': ['                  ', '       PPP        ', '       pPPp       ', '      DLHLLD      ', '       DGLD       ', '        SS        ', '        SS        ', '   wWWWWWWWWWWw   ', '   wWWWRSSRWWWw   ', '   wWWRRWWRRWWw   ', '   wWRRWWWWRRWw   ', '   wWWRWWWWRWWw   ', '   wWWWRWWRWWWw   ', '   wWWWWWWWWWWw   ', '   wWWWWWWWWWWw   ', '   wWWWWWWWWWWw   ', '    wwwwwwwwww    ', '                  '],
+  'bush-sm': ['                  ', '       PPPp       ', '      PpFFpP      ', '     PpPPpPPp     ', '     pPPpPPpP     ', '      pPppPp      ', '    DLHDSSDHLD    ', '   DLHLDSSDLHLD   ', '    DGD SS DGD    ', '        SS        ', '     rrrrrrtt     ', '      TTTTtt      ', '      TTTttt      ', '       oooo       ', '                  ', '                  ', '                  ', '                  '],
+  'bush-md': ['                  ', '       PPPp       ', '     PPpFFpPp     ', '    PpPPFpPpPp    ', '   PPpPPpPPpPPp   ', '   pPPpPPpPPpPP   ', '    PPpPPpPPpP    ', '    pPppPppPpp    ', '     pPppPppP     ', '   DLHLDSSDLHLD   ', ' DLHDLLDSSDLLDHLD ', '  DGLGD SS DGLGD  ', '    DG  SS  GD    ', '        SS        ', '   rrrrrrrrrrtt   ', '    TTTTTTTTtt    ', '    TTTTTTTttt    ', '     oooooooo     '],
+  'bush-lg': ['       PPPp       ', '     PPpFFpPp     ', '   PpPPpFFpPPpP   ', '  PPpPPpPPpPPpPp  ', '  pPPpPPpPPpPPpP  ', '  PpPPpPPpPPpPPp  ', '   PpPPpPPpPPpP   ', '   pPppPppPppPp   ', '    pPppPppPpp    ', '  DLHHLDSSDLHHLD  ', 'DLHHDLLDSSDLLDHHLD', ' DGLLGD SS DGLLGD ', '   DGD  SS  DGD   ', '        SS        ', '  rrrrrrrrrrrrtt  ', '   TTTTTTTTTTtt   ', '   TTTTTTTTTttt   ', '    oooooooooo    '],
+  'bush-xl': ['     PPpFFpPp     ', '   PpPPpFFpPPpP   ', '  PPpPPpPPpPPpPp  ', ' PpPPpPPpPPpPPpPp ', ' pPPpPPpPPpPPpPPp ', ' PpPPpPPpPPpPPpPP ', '  PpPPpPPpPPpPPp  ', '  pPppPppPppPppP  ', '   pPppPppPppPp   ', ' DLHHLLDSSDLLHHLD ', 'DLHHDLLDSSDLLDHHLD', 'DGLLLGD SS DGLLLGD', '  DGGD  SS  DGGD  ', '        SS        ', ' rrrrrrrrrrrrrrtt ', '  TTTTTTTTTTTTtt  ', '  TTTTTTTTTTTttt  ', '   oooooooooooo   '],
 }
 
 // Aliases — keep the old direct-by-arch keys working in case anything outside this module reads them.
@@ -29,6 +37,7 @@ sprites.cane = sprites['cane-md']
 sprites.trail = sprites['trail-md']
 sprites.succ = sprites['succ-md']
 sprites.fan = sprites['fan-md']
+sprites.bush = sprites['bush-md']
 
 function lookup(arch: ArchKey, size: SizeKey): string[] {
   return sprites[arch + '-' + size] ?? sprites[arch + '-md'] ?? sprites['broad-md']
@@ -46,6 +55,8 @@ function buildPalette(greens: GreensKey) {
     M: '#6b4a2a',                  // moss-pole stake (brown)
     W: '#b8d7e0', w: '#d8ecf2',    // water + highlight (glass jar)
     R: '#f6f1da',                  // exposed root (cream)
+    P: '#c3a3cf', p: '#9c7aaa',    // hydrangea bloom: mid + shadow lavender
+    F: '#e6cdeb',                  // hydrangea bloom highlight (light lavender)
   } as Record<string, string>
 }
 

@@ -198,6 +198,13 @@ button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
   .cal-grid { gap: 4px !important; }
   .cal-cell { padding: 4px 5px !important; min-height: 44px; }
   .cal-legend { flex-wrap: wrap; gap: 12px !important; }
+
+  /* Owner page: tighter card padding, actions stack full-width */
+  .owner-card-header { padding: 24px 18px !important; }
+  .owner-card-body { padding: 22px 18px 14px !important; }
+  .owner-card-footer { padding: 16px 18px 22px !important; }
+  .owner-actions { flex-direction: column; }
+  .owner-actions > button { width: 100%; justify-content: center; min-height: 44px; }
 }
 
 /* Narrow phones (≤480) — tighter plant rows and slimmer hero padding */

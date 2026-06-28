@@ -1,4 +1,4 @@
-export type ArchKey = 'broad' | 'cane' | 'trail' | 'succ' | 'fan'
+export type ArchKey = 'broad' | 'cane' | 'trail' | 'succ' | 'fan' | 'bush'
 export type GreensKey = 'forest' | 'deep' | 'bright' | 'jade'
 export type SizeKey = 'xs' | 'sm' | 'md' | 'lg' | 'xl'
 

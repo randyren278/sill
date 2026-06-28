@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../data/supabaseClient'
 import { clearOwnerKey, getOwnerKey, setOwnerKey, useIsOwner } from '../lib/owner'
-import { colors, radius, type } from '../lib/tokens'
+import { button, colors, radius, type } from '../lib/tokens'
 
 type SaveState = 'idle' | 'checking' | 'wrong' | 'error'
 
@@ -16,8 +16,10 @@ type SaveState = 'idle' | 'checking' | 'wrong' | 'error'
  */
 export function Owner() {
   const isOwner = useIsOwner()
+  const navigate = useNavigate()
   const [draft, setDraft] = useState<string>('')
   const [state, setState] = useState<SaveState>('idle')
+  const [reveal, setReveal] = useState<boolean>(false)
 
   // Don't prefill from localStorage. The whole point is to keep the key
   // out of every input value/DOM dump; show a blank field instead.
@@ -78,6 +80,7 @@ export function Owner() {
       }}
     >
       <div
+        className="owner-card"
         style={{
           width: '100%',
           maxWidth: 560,
@@ -89,6 +92,7 @@ export function Owner() {
       >
         {/* HEADER */}
         <div
+          className="owner-card-header"
           style={{
             padding: '36px 32px 28px',
             borderBottom: `1px solid ${colors.border.DEFAULT}`,
@@ -129,7 +133,7 @@ export function Owner() {
         </div>
 
         {/* BODY */}
-        <div style={{ padding: '28px 32px 18px' }}>
+        <div className="owner-card-body" style={{ padding: '28px 32px 18px' }}>
           <p
             style={{
               fontFamily: type.prose.fontFamily,
@@ -151,35 +155,64 @@ export function Owner() {
             }}
           >
             {isOwner
-              ? "Click below to remove this device's access. To rotate the password itself, update private.app_secrets.owner_key in Supabase."
-              : "Visitors don't see write buttons. Pasting the password here unlocks them on this device."}
+              ? "Lock when you're handing the device to someone else."
+              : "Only this device unlocks — the password isn't shared between browsers."}
           </p>
 
           {!isOwner && (
-            <input
-              type="password"
-              value={draft}
-              onChange={(e) => {
-                setDraft(e.target.value)
-                if (state !== 'idle') setState('idle')
-              }}
-              onKeyDown={onKeyDown}
-              placeholder="Owner password"
-              aria-label="Owner password"
-              autoComplete="off"
-              spellCheck={false}
-              style={{
-                width: '100%',
-                boxSizing: 'border-box',
-                fontSize: type.body.fontSize,
-                padding: '13px 15px',
-                borderRadius: radius.input,
-                border: `1px solid ${colors.border.DEFAULT}`,
-                background: colors.surface.DEFAULT,
-                color: colors.ink.primary,
-                marginBottom: 12,
-              }}
-            />
+            <div style={{ position: 'relative', marginBottom: 12 }}>
+              <input
+                type={reveal ? 'text' : 'password'}
+                value={draft}
+                onChange={(e) => {
+                  setDraft(e.target.value)
+                  if (state !== 'idle') setState('idle')
+                }}
+                onKeyDown={onKeyDown}
+                placeholder="Owner password"
+                aria-label="Owner password"
+                name="owner-password"
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="none"
+                spellCheck={false}
+                inputMode="text"
+                style={{
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  fontSize: type.body.fontSize,
+                  padding: '13px 48px 13px 15px',
+                  borderRadius: radius.input,
+                  border: `1px solid ${colors.border.DEFAULT}`,
+                  background: colors.surface.DEFAULT,
+                  color: colors.ink.primary,
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => setReveal((r) => !r)}
+                aria-label={reveal ? 'Hide password' : 'Show password'}
+                aria-pressed={reveal}
+                style={{
+                  position: 'absolute',
+                  top: '50%',
+                  right: 6,
+                  transform: 'translateY(-50%)',
+                  width: 36,
+                  height: 36,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  border: 'none',
+                  background: 'transparent',
+                  color: colors.ink.muted,
+                  cursor: 'pointer',
+                  borderRadius: radius.circle,
+                }}
+              >
+                <EyeIcon revealed={reveal} />
+              </button>
+            </div>
           )}
 
           {!isOwner && state === 'wrong' && (
@@ -209,7 +242,7 @@ export function Owner() {
             </div>
           )}
 
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <div className="owner-actions" style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             {!isOwner && (
               <button
                 type="button"
@@ -228,6 +261,42 @@ export function Owner() {
                 }}
               >
                 {state === 'checking' ? 'Checking…' : 'Unlock this device'}
+              </button>
+            )}
+            {isOwner && (
+              <button
+                type="button"
+                onClick={() => navigate('/')}
+                style={{
+                  border: button.primary.border,
+                  cursor: 'pointer',
+                  background: button.primary.background,
+                  color: button.primary.color,
+                  fontWeight: type.weight.semibold,
+                  fontSize: button.primary.fontSize,
+                  padding: button.primary.padding,
+                  borderRadius: radius.pill,
+                }}
+              >
+                Open my plants
+              </button>
+            )}
+            {isOwner && (
+              <button
+                type="button"
+                onClick={() => navigate('/plants/new')}
+                style={{
+                  border: button.ghostOutline.border,
+                  cursor: 'pointer',
+                  background: button.ghostOutline.background,
+                  color: button.ghostOutline.color,
+                  fontWeight: type.weight.semibold,
+                  fontSize: button.ghostOutline.fontSize,
+                  padding: button.ghostOutline.padding,
+                  borderRadius: radius.pill,
+                }}
+              >
+                Add a plant
               </button>
             )}
             {stored && (
@@ -253,6 +322,7 @@ export function Owner() {
 
         {/* FOOTER */}
         <div
+          className="owner-card-footer"
           style={{
             padding: '18px 32px 28px',
             borderTop: `1px solid ${colors.border.DEFAULT}`,
@@ -274,5 +344,35 @@ export function Owner() {
         </div>
       </div>
     </div>
+  )
+}
+
+function EyeIcon({ revealed }: { revealed: boolean }) {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {revealed ? (
+        <>
+          <path d="M3 3l18 18" />
+          <path d="M10.6 6.1A10.4 10.4 0 0112 6c5 0 9.3 3.4 11 6a13 13 0 01-3.4 4.1" />
+          <path d="M6.6 6.6A13 13 0 001 12c1.7 2.6 6 6 11 6a10.4 10.4 0 005.4-1.4" />
+          <path d="M9.9 9.9a3 3 0 004.2 4.2" />
+        </>
+      ) : (
+        <>
+          <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z" />
+          <circle cx="12" cy="12" r="3" />
+        </>
+      )}
+    </svg>
   )
 }

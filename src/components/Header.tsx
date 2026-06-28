@@ -1,4 +1,4 @@
-import { useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { PlantSprite } from './PlantSprite'
 import { useIsOwner } from '../lib/owner'
 import { button, colors, radius, type } from '../lib/tokens'
@@ -51,7 +51,7 @@ export function Header() {
           </div>
         </div>
       </div>
-      <div className="hdr-actions" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div className="hdr-actions" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', rowGap: 8, justifyContent: 'flex-end' }}>
         <button
           type="button"
           onClick={() => navigate('/')}
@@ -111,22 +111,30 @@ export function Header() {
           <MailIcon />
         </button>
         {isOwner && (
-          <span
-            aria-label="owner mode unlocked"
+          <Link
+            to="/owner"
+            aria-label="owner mode unlocked — tap to manage"
+            title="Owner mode"
             style={{
-              fontFamily: "ui-monospace, 'SF Mono', Menlo, monospace",
-              fontSize: 9.5,
-              letterSpacing: '.18em',
-              textTransform: 'uppercase',
-              padding: '4px 9px',
-              borderRadius: radius.pill,
-              border: `1px solid ${colors.brand.DEFAULT}`,
-              color: colors.brand.DEFAULT,
-              background: 'transparent',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 44,
+              height: 44,
+              textDecoration: 'none',
             }}
           >
-            owner
-          </span>
+            <span
+              aria-hidden="true"
+              style={{
+                width: 10,
+                height: 10,
+                borderRadius: radius.circle,
+                background: colors.brand.DEFAULT,
+                boxShadow: '0 0 0 3px rgba(30,61,47,.12)',
+              }}
+            />
+          </Link>
         )}
         {isOwner && (
           <button
