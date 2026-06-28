@@ -134,6 +134,10 @@ input[type=range] {
 }
 .hov-cal-nav:hover { background: #1e3d2f; color: #eef0e4; }
 
+/* Header owner-indicator: small (owner) pill on desktop, dot on mobile.
+   Defaults below; the 720 block flips them. */
+.owner-indicator-mobile { display: none; }
+
 /* ───── Mobile foundations + single-breakpoint layout ───── */
 
 html, body { overflow-x: hidden; }
@@ -161,6 +165,10 @@ button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
   .hdr-subtitle, .hdr-add-label { display: none; }
   .hdr-btn { padding: 10px 12px !important; font-size: 12px !important; min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
   .hdr-actions { gap: 6px !important; }
+
+  /* Owner indicator: swap label-pill for dot */
+  .owner-indicator-desktop { display: none !important; }
+  .owner-indicator-mobile  { display: inline-flex !important; }
 
   /* Dashboard hero stacks vertically */
   .dash-hero { flex-direction: column; align-items: flex-start !important; gap: 12px !important; }

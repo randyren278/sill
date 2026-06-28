@@ -202,17 +202,14 @@ Status colors in email: overdue `#b5613a` / soon `#b8862f` / happy `#3f6b4a` (li
 
 CTA pill stays `#1e3d2f` background + `#eef0e4` text in BOTH modes (brand identity, audit decision).
 
-## Sender icon
+## Brand icon
 
-`public/icon-email.png` is rendered from `public/favicon.svg` at **288×288 (16× integer scale from 18-unit SVG)** with `+antialias off` and no alpha:
+`public/favicon-180.png` is the single canonical brand asset — the pixel-art plant sprite on a transparent background. It's used wherever the app needs a logo:
 
-```bash
-cp public/favicon.svg /tmp/favicon-sized.svg
-sed -i '' 's|<svg xmlns="http://www.w3.org/2000/svg"|<svg xmlns="http://www.w3.org/2000/svg" width="288" height="288"|' /tmp/favicon-sized.svg
-magick +antialias -background "#1e3d2f" /tmp/favicon-sized.svg -flatten -strip -define png:color-type=2 public/icon-email.png
-```
+- In-app: `src/screens/Owner.tsx`, `src/screens/Unsubscribed.tsx`.
+- Emails: header of both `supabase/functions/send-watering-reminder/index.ts` and `supabase/functions/send-welcome/index.ts`.
 
-Do NOT use 256×256 — that's 14.22× (non-integer) and produces dithering speckles in the dark-green tile. The SVG must have explicit `width`/`height` attrs or ImageMagick ignores `shape-rendering="crispEdges"`. Background must be baked in (no alpha) because Outlook/Gmail Android strip `style="background"` on `<img>`.
+Every site frames the sprite with a **cream `#fbfaf5` tile + 1px brand-green `#1e3d2f` border + 14px radius**, never baked into the PNG. The transparent sprite plus the markup-defined frame means the dark-green leaf pixels stay legible (a previous baked dark-green tile masked them). Don't regenerate the asset onto a colored background — extend or restyle the frame in markup instead.
 
 ## Heartbeat
 

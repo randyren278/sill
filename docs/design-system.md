@@ -139,7 +139,7 @@ Pixel art is generated at runtime by [`src/lib/sprites.ts`](../src/lib/sprites.t
 
 That's 100 possible combinations. Each archetype is an 18×18 grid (md) of color codes; characters map to palette keys (`D` darkest → `H` highlight, plus `S` stem, `T`/`r` pot, `o` rim, `M` moss pole, `W` water, `R` root). Larger sizes use hand-tuned bigger grids; smaller sizes have variants.
 
-The brand icon (favicon, OG image, email header) is **arch=broad, greens=forest, size=md** — pixel-art forest plant in a clay pot. The 256×256 export lives at [`public/icon-email.png`](../public/icon-email.png) for use in emails (do **not** regenerate with smoothing — use nearest-neighbor / `image-rendering: pixelated` to preserve crispness).
+The brand icon (favicon, OG image, email header) is **arch=broad, greens=forest, size=md** — pixel-art forest plant in a clay pot. The single canonical 180×180 transparent-background export lives at [`public/favicon-180.png`](../public/favicon-180.png) and is used everywhere; every site frames it in markup with a cream `#fbfaf5` tile + 1px `#1e3d2f` border (do **not** bake a background into the PNG, and do **not** regenerate with smoothing — use nearest-neighbor / `image-rendering: pixelated` to preserve crispness).
 
 ---
 

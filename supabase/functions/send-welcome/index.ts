@@ -118,7 +118,10 @@ function welcomeBody(opts: {
     '<tr><td align="center" valign="top" style="padding:32px 16px 48px 16px;">' +
     '<table role="presentation" width="560" cellspacing="0" cellpadding="0" border="0" class="sill-card" style="width:100%;max-width:560px;background-color:#fbfaf5;border-radius:18px;border:1px solid #e6e3d7;">' +
     '<tr><td align="center" class="sill-header sill-divider-td" style="padding:36px 32px 28px;border-bottom:1px solid #e6e3d7;">' +
-    '<img src="' + APP_URL + '/icon-email.png" width="64" height="64" alt="Sill" style="display:block;border-radius:14px;image-rendering:pixelated;margin:0 auto 18px auto;">' +
+    '<table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:0 auto 18px auto;border-collapse:separate;">' +
+    '<tr><td bgcolor="#fbfaf5" width="64" height="64" style="background-color:#fbfaf5;border:1px solid #1e3d2f;border-radius:14px;padding:0;line-height:0;font-size:0;">' +
+    '<img src="' + APP_URL + '/favicon-180.png" width="64" height="64" alt="Sill" style="display:block;border-radius:14px;image-rendering:pixelated;">' +
+    '</td></tr></table>' +
     '<p class="sill-ink" style="margin:0 0 10px 0;font-family:\'Newsreader\',Georgia,serif;font-size:30px;font-weight:700;letter-spacing:-0.01em;line-height:1;color:#1b211c;">Sill</p>' +
     '<p class="sill-happy" style="margin:0 0 6px 0;font-family:ui-monospace,\'SF Mono\',Menlo,monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.18em;color:#3f6b4a;">Welcome</p>' +
     '<p class="sill-faint" style="margin:0;font-family:ui-monospace,\'SF Mono\',Menlo,monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.18em;color:#858b80;">' + opts.todayLabel + '</p>' +

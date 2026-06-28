@@ -115,8 +115,8 @@ export function Header() {
             to="/owner"
             aria-label="owner mode unlocked — tap to manage"
             title="Owner mode"
+            className="owner-indicator-mobile"
             style={{
-              display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
               width: 44,
@@ -134,6 +134,39 @@ export function Header() {
                 boxShadow: '0 0 0 3px rgba(30,61,47,.12)',
               }}
             />
+          </Link>
+        )}
+        {isOwner && (
+          <Link
+            to="/owner"
+            aria-label="owner mode unlocked — tap to manage"
+            title="Owner mode"
+            className="owner-indicator-desktop"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontFamily: type.actionLabel.fontFamily,
+              fontSize: button.navTab.fontSize,
+              fontWeight: type.weight.semibold,
+              padding: button.navTab.padding,
+              borderRadius: radius.pill,
+              background: button.navTab.backgroundInactive,
+              color: button.navTab.colorInactive,
+              textDecoration: 'none',
+            }}
+          >
+            <span
+              aria-hidden="true"
+              style={{
+                width: 7,
+                height: 7,
+                borderRadius: radius.circle,
+                background: colors.brand.DEFAULT,
+                marginRight: 7,
+              }}
+            />
+            owner
           </Link>
         )}
         {isOwner && (

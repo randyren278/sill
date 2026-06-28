@@ -68,9 +68,9 @@ Type sizes to use:
 Exactly **one** hosted image is allowed:
 
 ```html
-<img src="https://pleasepleasepleasewater.me/icon-email.png"
+<img src="https://pleasepleasepleasewater.me/favicon-180.png"
      width="64" height="64" alt="Sill"
-     style="display:block;border-radius:14px;background:#1e3d2f;padding:6px;image-rendering:pixelated;">
+     style="display:block;border-radius:14px;background:#fbfaf5;border:1px solid #1e3d2f;image-rendering:pixelated;">
 ```
 
 It's a 256 × 256 pixel-art plant (broad-leaf, forest palette) served from the live site. **Do not** use other images, do not use SVG, do not use `background-image` on `<div>` — Gmail strips it.
@@ -183,7 +183,7 @@ The current email (single inline-style table, dot + name + meta per row, three s
 5. **Optional subtle illustration.** A single decorative element (e.g. a thin horizontal pixel-art accent line, made from inline SVG kept under 1 KB and embedded via `data:image/svg+xml;base64,...` only if needed) — but keep total email weight under 60 KB.
 
 What **not** to change:
-- The hosted image URL (`/icon-email.png`).
+- The hosted image URL (`/favicon-180.png`, framed in markup with a cream tile + 1px `#1e3d2f` outline, not baked).
 - The brand color hexes — no introducing new tones.
 - The three status thresholds and their labels (`Needs water`, `Due soon`, `Happy`).
 - The placeholder names.

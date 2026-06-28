@@ -85,11 +85,11 @@ export function Unsubscribed() {
           }}
         >
           <img
-            src="/icon-email.png"
+            src="/favicon-180.png"
             width={64}
             height={64}
             alt="Sill"
-            style={{ display: 'block', margin: '0 auto 18px', borderRadius: 14, imageRendering: 'pixelated' }}
+            style={{ display: 'block', margin: '0 auto 18px', borderRadius: 14, imageRendering: 'pixelated', backgroundColor: '#fbfaf5', border: '1px solid #1e3d2f' }}
           />
           <div
             style={{

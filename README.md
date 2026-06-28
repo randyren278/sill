@@ -87,7 +87,7 @@ The `CRON_SHARED_SECRET` must match the literal embedded inside the `cron.schedu
 
 A daily roster digest: every plant grouped into **Needs water** (overdue + due today), **Due soon** (within 2 days), and **Happy** (3+ days out). Empty groups are omitted. The subject leads with the most actionable count — `"3 plants need water"`, falling back to `"2 plants due soon"`, then `"All N plants happy 🌿"` when everything's fine. The function still sends one email per day even when nothing is due, so you know reminders are alive.
 
-The body has a header pixel-art plant icon (served from `public/icon-email.png`) sitting on a dark-green tile, then the Sill wordmark, summary line, status sections with colored dots, and an "Open Sill" pill button.
+The body has a header pixel-art plant icon (served from `public/favicon-180.png`) framed on a cream tile with a thin dark-green outline, then the Sill wordmark, summary line, status sections with colored dots, and an "Open Sill" pill button.
 
 ### Sender avatar (Apple Mail / iCloud / Fastmail — free)
 
@@ -95,7 +95,7 @@ The circular profile picture next to `reminders@pleasepleasepleasewater.me` in t
 
 **One-time setup:**
 1. Sign up at gravatar.com using `reminders@pleasepleasepleasewater.me`.
-2. Upload `public/favicon-180.png` (or any 256+ px square crop of the Sill icon).
+2. Upload `public/favicon-180.png` (180×180 canonical asset; use this directly — do not crop or re-export).
 3. Click the verification link sent to the address. Apple Mail will start showing the avatar within ~24h of the next send.
 
 **Gmail** ignores Gravatar — it shows a sender avatar only when the sending domain publishes a [BIMI](https://bimigroup.org/) DNS record AND has a paid Verified Mark Certificate (~$500–1500/yr). That's why the email body itself renders a 64×64 brand image up top: even without BIMI, Gmail readers see the icon inline.
