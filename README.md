@@ -58,31 +58,7 @@ What Sill asks of a contributor:
 Once a day, every subscriber gets a digest. Three single-purpose Edge Functions, stitched together by one shared HMAC token.
 
 ```mermaid
-%%{init: {
-  "theme": "base",
-  "themeVariables": {
-    "fontFamily": "ui-sans-serif, system-ui, sans-serif",
-    "background": "#eef0e4",
-    "primaryColor": "#fbfaf5",
-    "primaryTextColor": "#1e3d2f",
-    "primaryBorderColor": "#3f6b4a",
-    "lineColor": "#3f6b4a",
-    "actorBkg": "#fbfaf5",
-    "actorBorder": "#3f6b4a",
-    "actorTextColor": "#1e3d2f",
-    "actorLineColor": "#3f6b4a",
-    "signalColor": "#3f6b4a",
-    "signalTextColor": "#1e3d2f",
-    "labelBoxBkgColor": "#fbfaf5",
-    "labelBoxBorderColor": "#3f6b4a",
-    "labelTextColor": "#1e3d2f",
-    "loopTextColor": "#1e3d2f",
-    "noteBkgColor": "#fbfaf5",
-    "noteBorderColor": "#3f6b4a",
-    "noteTextColor": "#1e3d2f",
-    "sequenceNumberColor": "#fbfaf5"
-  }
-}}%%
+%%{init: {"theme":"base","themeVariables":{"background":"#eef0e4","primaryColor":"#fbfaf5","primaryTextColor":"#1e3d2f","primaryBorderColor":"#3f6b4a","lineColor":"#3f6b4a","actorBkg":"#fbfaf5","actorBorder":"#3f6b4a","actorTextColor":"#1e3d2f","signalColor":"#3f6b4a","signalTextColor":"#1e3d2f","labelBoxBkgColor":"#fbfaf5","labelBoxBorderColor":"#3f6b4a","labelTextColor":"#1e3d2f","loopTextColor":"#1e3d2f","noteBkgColor":"#fbfaf5","noteBorderColor":"#3f6b4a","noteTextColor":"#1e3d2f","sequenceNumberColor":"#fbfaf5"}}}%%
 sequenceDiagram
   autonumber
   participant Cron as pg_cron (16:00 UTC)
