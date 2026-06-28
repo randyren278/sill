@@ -1,191 +1,259 @@
-# Sill
+<a name="readme-top"></a>
 
-Single-tenant plant tracker. Shows my plants, anyone who visits sees the same plants and can water / add / edit / delete them.
+<p align="center">
+  <img src="public/favicon.svg" width="180" height="180" alt="Sill — a pixel-art plant in a terracotta pot">
+</p>
 
-## Stack
+<h1 align="center">Sill</h1>
 
-- React + Vite + TypeScript
-- React Router v6 (real routes per screen)
-- Supabase (Postgres) for plant storage — no auth, single global table
-- No framework, no UI library — inline styles + one CSS file
+<p align="center"><i>Sillus domesticus</i> — a windowsill that emails you.</p>
 
-## Local development
+<p align="center">
+  <a href="https://pleasepleasepleasewater.me">Live</a> ·
+  <a href="#vital-stats">Stats</a> ·
+  <a href="#light">Light</a> ·
+  <a href="#water">Water</a> ·
+  <a href="#soil">Soil</a> ·
+  <a href="#symptoms--remedies">Symptoms</a> ·
+  <a href="#propagation">Propagation</a> ·
+  <a href="./CLAUDE.md">Docs</a>
+</p>
+
+---
+
+A small plant-watering tracker that lives at **pleasepleasepleasewater.me**. The owner curates the collection; anyone visiting waters, adds, edits, or deletes. Subscribe an email and a daily digest tells you what's thirsty.
+
+> The domain reads the way the plants would say it.
+
+> [!WARNING]
+> **Anyone visiting the live site can add, edit, or delete plants.** This is the trust model, on purpose. The only thing locked down is the subscriber list — emails are private.
+
+<p align="right"><a href="#readme-top">back to top ↑</a></p>
+
+## Vital stats
+
+<table>
+  <tr><td><b>Origin</b></td><td>Vercel (SPA), Supabase (data + cron), Resend (email)</td></tr>
+  <tr><td><b>Habitat</b></td><td>Postgres + Edge Functions + <code>pg_cron</code> + <code>pg_net</code></td></tr>
+  <tr><td><b>Foliage</b></td><td>React 18 · Vite 5 · TypeScript · React Router v6</td></tr>
+  <tr><td><b>Watering</b></td><td>Daily 9am Pacific (drifts to 8am in winter — cron is UTC and doesn't honor DST)</td></tr>
+  <tr><td><b>Hardiness</b></td><td>Free-tier Supabase · 100 emails/day Resend · zero CSS frameworks</td></tr>
+  <tr><td><b>Propagation</b></td><td><code>git clone && npm install && npm run dev</code></td></tr>
+</table>
+
+<p align="right"><a href="#readme-top">back to top ↑</a></p>
+
+## Light
+
+What Sill asks of a contributor:
+
+- **Inline styles.** No CSS framework, no UI library. One stylesheet at `src/index.css` for keyframes, scrollbar, focus rings, and the single `@media (max-width: 720px)` mobile breakpoint.
+- **Design tokens are the source of truth.** Reach for `src/lib/tokens.ts` — `colors.surface.DEFAULT`, `colors.brand.DEFAULT`, `type.body.fontFamily` — never hard-code `'Newsreader'` or a hex code.
+- **Read [`CLAUDE.md`](./CLAUDE.md) first.** It carries the architectural memory (privacy enforcement, secret rotation, the things that have bitten us). This README is the porch; CLAUDE.md is the workshop.
+
+<p align="right"><a href="#readme-top">back to top ↑</a></p>
+
+## Water
+
+Once a day, every subscriber gets a digest. Three single-purpose Edge Functions, stitched together by one shared HMAC token.
+
+```mermaid
+---
+config:
+  theme: base
+  themeVariables:
+    primaryColor: '#f3f1e9'
+    primaryTextColor: '#1e3d2f'
+    primaryBorderColor: '#1e3d2f'
+    secondaryColor: '#eef0e4'
+    tertiaryColor: '#fbfaf5'
+    lineColor: '#3f6b4a'
+    actorBkg: '#fbfaf5'
+    actorBorder: '#1e3d2f'
+    actorTextColor: '#1b211c'
+    signalColor: '#3f6b4a'
+    signalTextColor: '#1b211c'
+    noteBkgColor: '#eef0e4'
+    noteBorderColor: '#1e3d2f'
+    noteTextColor: '#1b211c'
+---
+sequenceDiagram
+  autonumber
+  participant Cron as pg_cron (16:00 UTC)
+  participant Edge as send-watering-reminder
+  participant DB as Supabase Postgres
+  participant Resend
+  participant Inbox
+
+  Cron->>Edge: x-cron-secret
+  Edge->>DB: select enabled subscribers + plants
+  loop per subscriber
+    Edge->>Edge: build digest + HMAC unsubscribe token
+    Edge->>Resend: POST /emails
+    Resend-->>Inbox: deliver
+    Edge->>DB: stamp last_sent_date + log reminder_runs
+  end
+```
+
+The unsubscribe link in every email is `subscriberId.base64url(HMAC-SHA256(secret, "id:email"))`. Same construction in all three Edge Functions and a SQL mirror. **One-click unsubscribe is JSON-only** — Supabase's gateway forces `content-type: text/plain` on unauthenticated functions, so the visible landing page lives at `/unsubscribed` inside the SPA. Email clients (Gmail, Apple Mail) hit `/api/unsubscribe` via a `vercel.json` rewrite; the SPA hits the same endpoint with a JSON body.
+
+<p align="right"><a href="#readme-top">back to top ↑</a></p>
+
+## Soil
+
+Three tables in `public`. The soil is shallow on purpose.
+
+```text
+┌────────────────────┐     ┌────────────────────┐     ┌────────────────────┐
+│  plants            │     │  subscribers       │     │  reminder_runs     │
+│  ──────────        │     │  ──────────        │     │  ──────────        │
+│  open trust        │     │  RLS-locked        │     │  audit log         │
+│  RLS using (true)  │     │  no anon SELECT    │     │  one row per send  │
+│  read/write/delete │     │  in: subscribe()   │     │  fuels heartbeat   │
+│  for anyone        │     │  out: count() RPC  │     │  banner            │
+└────────────────────┘     └────────────────────┘     └────────────────────┘
+```
+
+> [!NOTE]
+> Privacy is enforced at three layers because each one has slipped before — (1) RLS denies anon SELECT on `subscribers`, (2) the Subscribe page never reads from `subscribers` on mount, (3) a Playwright spec greps the production JS bundle for `@` and fails on a match. If you change `src/screens/Subscribe.tsx`, re-run `npm run test:e2e -- privacy.spec.ts`.
+
+<p align="right"><a href="#readme-top">back to top ↑</a></p>
+
+## Feeding schedule
+
+| Script | What it does |
+|---|---|
+| `npm run dev` | Vite dev server on `:5173` |
+| `npm run build` | `tsc -b && vite build` → `dist/` |
+| `npm run preview` | Serve the built bundle locally |
+| `npm run typecheck` | `tsc -b --noEmit` — no JS emitted |
+| `npm run test:e2e` | Playwright suite (needs `.env.test.local`) |
+
+> [!NOTE]
+> `npm run typecheck && npm run build` must be clean before shipping.
+
+<p align="right"><a href="#readme-top">back to top ↑</a></p>
+
+## Palette
+
+The audit-locked palette, shared by app and email. Status colors are the same ramp you'll see on the dashboard sprites.
+
+<p>
+  <img src="https://img.shields.io/badge/forest-%231e3d2f-1e3d2f?style=flat-square" alt="forest #1e3d2f">
+  <img src="https://img.shields.io/badge/cream-%23f3f1e9-f3f1e9?style=flat-square&labelColor=1e3d2f" alt="cream #f3f1e9">
+  <img src="https://img.shields.io/badge/sage-%239bb98a-9bb98a?style=flat-square&labelColor=1e3d2f" alt="sage #9bb98a">
+  <img src="https://img.shields.io/badge/amber-%23b8862f-b8862f?style=flat-square" alt="amber #b8862f">
+  <img src="https://img.shields.io/badge/burnt-%23b5613a-b5613a?style=flat-square" alt="burnt orange #b5613a">
+</p>
+
+Forest is the CTA. Cream is the page. Sage means happy. Amber means due soon. Burnt orange means overdue and a little wilted (a CSS filter actually tilts the sprite when a plant is late).
+
+<p align="right"><a href="#readme-top">back to top ↑</a></p>
+
+## Symptoms & remedies
+
+The papercuts each have a fix. They're documented because they all bit at least once.
+
+<table>
+  <tr>
+    <td width="40%"><b>Symptom</b></td>
+    <td><b>Remedy</b></td>
+  </tr>
+  <tr>
+    <td>Leaves drooping — no email arrived, yellow banner up</td>
+    <td>Supabase free tier auto-paused the project. <code>select * from reminder_runs order by ran_at desc limit 5</code> and <code>select * from cron.job_run_details order by start_time desc limit 5</code>. Resume the project; the banner clears on the next successful run.</td>
+  </tr>
+  <tr>
+    <td>Reminder arrived an hour early in November</td>
+    <td><code>pg_cron</code> runs in UTC and doesn't honor DST. 9am PDT becomes 8am PST every winter. Accepted tradeoff — do not "fix."</td>
+  </tr>
+  <tr>
+    <td>Unsubscribe page shows raw HTML source</td>
+    <td>Supabase's gateway forces <code>content-type: text/plain</code> on unauthenticated Edge Functions. The visible page must live at <code>/unsubscribed</code> in the SPA; the Edge Function returns JSON only.</td>
+  </tr>
+  <tr>
+    <td>The icon PNG has speckles on the dark-green tile</td>
+    <td>Non-integer SVG-to-PNG scaling. <code>public/icon-email.png</code> must be rendered at exactly 288×288 (16× the 18-unit SVG). 256 sounds reasonable, is 14.22×, dithers. See CLAUDE.md → Sender icon for the ImageMagick incantation.</td>
+  </tr>
+  <tr>
+    <td>An email link says "invalid token" the day after a secret rotation</td>
+    <td><code>UNSUBSCRIBE_SECRET</code> lives in two places. Update <i>both</i>: <code>supabase secrets set UNSUBSCRIBE_SECRET=…</code> AND <code>update private.app_secrets set unsubscribe_secret = …</code>. Otherwise pre-rotation links stop verifying.</td>
+  </tr>
+</table>
+
+<p align="right"><a href="#readme-top">back to top ↑</a></p>
+
+## Propagation
 
 ```bash
+git clone https://github.com/randyren278/sill.git
+cd sill
 cp .env.local.example .env.local
-# Fill in VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY from your Supabase dashboard
+# Fill VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY from the Supabase dashboard.
 npm install
 npm run dev          # http://localhost:5173
-npm run build        # → dist/
-npm run typecheck
 ```
 
-## Supabase setup (one time)
+<details>
+<summary><kbd>Full environment variable reference</kbd></summary>
 
-In the Supabase dashboard, open the **SQL Editor** and run:
+**`.env.local` (frontend, ships to the client):**
 
-```sql
-create table public.plants (
-  id            text        primary key,
-  name          text        not null,
-  loc           text        not null,
-  latin         text        not null,
-  common        text        not null,
-  light         text        not null,
-  freq_days     integer     not null,
-  arch          text        not null,
-  greens        text        not null,
-  fact          text        not null,
-  last_watered  date        not null,
-  history       jsonb       not null default '[]'::jsonb,
-  created_at    timestamptz not null default now()
-);
+- `VITE_SUPABASE_URL` — Supabase project URL
+- `VITE_SUPABASE_ANON_KEY` — publishable `sb_publishable_…` key (safe to ship)
+- `VITE_IMPORT_SECRET` — gates the import-backup Edge Function
 
-alter table public.plants enable row level security;
+**Do not** add `VITE_WELCOME_SECRET`. The welcome secret is server-side only — the `subscribe()` RPC fires welcome emails via `pg_net` from Postgres, reading the secret out of `private.app_secrets`. Anything with a `VITE_` prefix is grep-able in the production JS bundle.
 
--- Trust mode: anyone with the anon key can read + write.
-create policy plants_read   on public.plants for select using (true);
-create policy plants_insert on public.plants for insert with check (true);
-create policy plants_update on public.plants for update using (true) with check (true);
-create policy plants_delete on public.plants for delete using (true);
-```
+**Supabase Edge Function secrets (server-side):**
 
-Then **Settings → API** → copy the URL and `anon` `public` key into `.env.local`.
+- `RESEND_API_KEY`
+- `CRON_SHARED_SECRET` (also embedded literally inside the `cron.schedule` SQL)
+- `UNSUBSCRIBE_SECRET` (also mirrored into `private.app_secrets.unsubscribe_secret`)
+- `WELCOME_SHARED_SECRET` (also mirrored into `private.app_secrets.welcome_shared_secret`)
+- `IMPORT_SHARED_SECRET`
+- `REMINDER_SENDER` — e.g. `Sill <reminders@pleasepleasepleasewater.me>`
+- `APP_URL` — `https://pleasepleasepleasewater.me`
 
-That's it. No auth provider, no users, no email templates.
+**`.env.test.local` (Playwright; never commit):**
 
-## Daily watering reminders (Phase 1a)
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `CRON_SHARED_SECRET`
 
-Sill sends a daily email digest via a Supabase Edge Function triggered by `pg_cron` at **16:00 UTC** (9am PDT in summer, 8am PST in winter — `pg_cron` doesn't honour daylight savings, so the wall-clock time shifts an hour in November).
+See `.env.test.local.example` for the full template.
 
-### One-time setup
+</details>
 
-**1. Resend account + domain verification.**
-- Sign up at [resend.com](https://resend.com) (100 emails/day free).
-- Add `pleasepleasepleasewater.me` (or your sender domain) and copy the DNS records into your registrar.
-- Generate an API key.
+<details>
+<summary><kbd>A field note about commits</kbd></summary>
 
-**2. Set Supabase secrets** (the Edge Functions read these at runtime):
+There is a pre-existing typo (`WLsCo` where it should be `WLsC`) in `.env.local.example` that keeps trying to sneak into commits. Don't `git add .` — review every file. Also: don't commit `tsconfig.app.tsbuildinfo`.
 
-```bash
-supabase secrets set RESEND_API_KEY=re_...
-supabase secrets set CRON_SHARED_SECRET=<the secret embedded in the cron schedule>
-supabase secrets set UNSUBSCRIBE_SECRET=<openssl rand -hex 32>
-supabase secrets set REMINDER_SENDER='Sill <reminders@pleasepleasepleasewater.me>'
-supabase secrets set APP_URL=https://pleasepleasepleasewater.me
-```
+</details>
 
-The `CRON_SHARED_SECRET` must match the literal embedded inside the `cron.schedule` SQL — the function rejects calls without it. Rotate by re-running `cron.unschedule('send-watering-reminder')` + a fresh `cron.schedule(...)` with the new secret + `supabase secrets set CRON_SHARED_SECRET=...`.
+<p align="right"><a href="#readme-top">back to top ↑</a></p>
 
-`UNSUBSCRIBE_SECRET` signs the one-click unsubscribe links in every reminder email. Rotating it invalidates every previously-sent unsubscribe link — that's the expiry mechanism. The same secret is read by both the `send-watering-reminder` function (to sign) and the `unsubscribe` function (to verify), so they must always match.
+## What this plant is NOT
 
-**3. Enable reminders in the app.**
-- Open `/settings` in Sill.
-- Enter your email, toggle on, Save.
+If a feature request seems to require any of these, raise it first — the answer might be _"we don't do that here."_
 
-### What lands in your inbox
+- Not multi-tenant. One plant collection, shared by all visitors.
+- No auth. Anyone can edit plants. Intentional.
+- No manage-my-subscription page. Subscribe and unsubscribe are the entire surface.
+- No double opt-in. Single opt-in is fine for this trust model.
+- No GitHub Actions CI. Playwright is local-only for now.
 
-A daily roster digest: every plant grouped into **Needs water** (overdue + due today), **Due soon** (within 2 days), and **Happy** (3+ days out). Empty groups are omitted. The subject leads with the most actionable count — `"3 plants need water"`, falling back to `"2 plants due soon"`, then `"All N plants happy 🌿"` when everything's fine. The function still sends one email per day even when nothing is due, so you know reminders are alive.
+<p align="right"><a href="#readme-top">back to top ↑</a></p>
 
-The body has a header pixel-art plant icon (served from `public/favicon-180.png`) framed on a cream tile with a thin dark-green outline, then the Sill wordmark, summary line, status sections with colored dots, and an "Open Sill" pill button.
+## Field notes
 
-### Sender avatar (Apple Mail / iCloud / Fastmail — free)
+- Pixel-art sprites are hand-authored in [`src/lib/sprites.ts`](src/lib/sprites.ts) — six archetypes (broad, cane, trail, succ, fan, bush), four green palettes, all 18×18 with `shape-rendering: crispEdges`. They sway when they mount and wilt when they're overdue.
+- The favicon you see at the top of this file is the same pixel-art, scaled 10× from `viewBox="0 0 18 18"`.
+- Design tokens live in [`src/lib/tokens.ts`](src/lib/tokens.ts); email-template palette is mirrored separately and audit-locked in [`CLAUDE.md`](./CLAUDE.md#email-design-palette-locked-audit-passed).
+- Built on the shoulders of [Supabase], [Resend], and [Vercel].
 
-The circular profile picture next to `reminders@pleasepleasepleasewater.me` in the recipient's inbox is sourced from [Gravatar](https://gravatar.com) by these clients.
+<p align="right"><a href="#readme-top">back to top ↑</a></p>
 
-**One-time setup:**
-1. Sign up at gravatar.com using `reminders@pleasepleasepleasewater.me`.
-2. Upload `public/favicon-180.png` (180×180 canonical asset; use this directly — do not crop or re-export).
-3. Click the verification link sent to the address. Apple Mail will start showing the avatar within ~24h of the next send.
-
-**Gmail** ignores Gravatar — it shows a sender avatar only when the sending domain publishes a [BIMI](https://bimigroup.org/) DNS record AND has a paid Verified Mark Certificate (~$500–1500/yr). That's why the email body itself renders a 64×64 brand image up top: even without BIMI, Gmail readers see the icon inline.
-
-### One-click unsubscribe
-
-Every reminder carries an HMAC-signed `/api/unsubscribe?token=...` link in its footer, plus the standards-compliant `List-Unsubscribe` and `List-Unsubscribe-Post: List-Unsubscribe=One-Click` headers (RFC 8058) — Gmail and Apple Mail render a native "Unsubscribe" link next to the sender name. Clicking it flips `reminder_settings.enabled` to `false` and logs a `skip_reason: 'unsubscribed_via_email'` audit row. Re-enable from `/settings` whenever you want.
-
-The clean public URL `https://pleasepleasepleasewater.me/api/unsubscribe` is wired via a `vercel.json` rewrite to the Supabase Edge Function — keeps the Supabase project URL out of the email.
-
-### Welcome email
-
-When reminders are toggled on for the first time in `/settings`, a one-time welcome email fires from the `send-welcome` Edge Function (same visual family as the digest — dark-mode aware, mobile-responsive). Guarded by `reminder_settings.welcomed_at` so toggling off/on doesn't re-send.
-
-**One-time setup:** generate a shared secret (`openssl rand -hex 32`) and set it in **two** places (same value in both):
-
-```bash
-supabase secrets set WELCOME_SHARED_SECRET=<value>
-```
-
-And as a Vercel environment variable:
-
-```
-VITE_WELCOME_SECRET=<same value>
-```
-
-(The Edge Function reads `WELCOME_SHARED_SECRET`; the frontend reads `VITE_WELCOME_SECRET`. They must match.)
-
-To resend the welcome (e.g. for testing): `update public.reminder_settings set welcomed_at = null where id = 1` then toggle off + on in `/settings`.
-
-### Reliability guardrails
-
-- The Edge Function ALWAYS writes one row to `reminder_runs`, with `sent: true|false` plus a `skip_reason` (`disabled` / `rate_limited` / `missing_resend_key` / `missing_unsubscribe_secret` / `no_plants` / `settings_read_failed` / `plants_read_failed` / `unsubscribed_via_email`) or an `error`. The Dashboard's yellow heartbeat banner flips on when no row has landed in the last 30 hours — so if Supabase auto-pauses the free-tier project, you find out.
-- A hard per-day send cap is enforced inside the function (one `sent=true` row per UTC day) so a misconfigured cron loop can't burn Resend's free quota silently.
-
-## Backup / restore
-
-Settings → Backup exports a JSON file of every plant + history (pure client-side download). Import accepts the same shape back — it validates server-side via the `import-backup` Edge Function before upserting, so a corrupt file can't wipe the live collection.
-
-**One-time setup for Import:**
-
-```bash
-# Set on the Edge Function side
-supabase secrets set IMPORT_SHARED_SECRET=<a long random hex string>
-```
-
-Then add the same value to `.env.local` so the frontend can call the function:
-
-```
-VITE_IMPORT_SECRET=<the same value>
-```
-
-(Export works without any setup — only Import requires the secret.)
-
-## Project layout
-
-```
-src/
-├── App.tsx                ─ <Header/> + <Outlet/>
-├── main.tsx               ─ React root + RouterProvider + PlantsProvider
-├── routes.tsx             ─ createBrowserRouter config
-├── index.css              ─ keyframes, scrollbar, focus, mobile media query
-├── lib/
-│   ├── dates.ts           ─ TODAY const + parse/iso/addDays/diff/fmt
-│   ├── sprites.ts         ─ pixel-art sprite generator (5 archetypes × 4 palettes)
-│   ├── palette.ts         ─ green palettes + status colors
-│   ├── species.ts         ─ SPECIES table
-│   ├── derive.ts          ─ derive(plant) → status math
-│   └── calendar.ts        ─ buildCalendar(plants, offset) → 35-cell month grid
-├── data/
-│   ├── types.ts           ─ Plant + Species types
-│   ├── repo.ts            ─ PlantsRepo interface
-│   ├── supabaseClient.ts  ─ createClient singleton
-│   ├── supabasePlantsRepo.ts ─ PlantsRepo implementation
-│   └── PlantsProvider.tsx ─ React context + usePlants hook
-├── components/
-│   ├── Header.tsx
-│   ├── PlantSprite.tsx
-│   ├── MeterBar.tsx
-│   ├── StatusDot.tsx
-│   └── NumberCountUp.tsx
-└── screens/
-    ├── Dashboard.tsx        ─ /
-    ├── PlantDetail.tsx      ─ /plants/:id
-    ├── PlantForm.tsx        ─ /plants/new and /plants/:id/edit
-    └── Calendar.tsx         ─ /calendar
-```
-
-## Notes
-
-- **`TODAY = '2026-06-19'`** in `src/lib/dates.ts` is hard-coded so demo dates render predictably. Change to `new Date()` in production once you've added real plants whose `lastWatered` reflects reality.
-- **Trust mode**: the Supabase anon key is shipped to the browser. Anyone with the URL can mutate the data. Acceptable because this is your personal tracker and the audience is small. If a stranger ever vandalizes the list: lock writes via RLS + a magic-link login for you only, or rotate the anon key.
-- **Single breakpoint mobile** at `@media (max-width: 720px)`. All responsive rules in `src/index.css`. Verified at 320 / 375 / 414 / 720 / 768 / 1060 viewports.
+[Supabase]: https://supabase.com
+[Resend]: https://resend.com
+[Vercel]: https://vercel.com
