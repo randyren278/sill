@@ -151,36 +151,38 @@ export function Owner() {
             }}
           >
             {isOwner
-              ? 'You can add, water, edit, and delete plants from any page. The password is stored on this browser only.'
+              ? "Click below to remove this device's access. To rotate the password itself, update private.app_secrets.owner_key in Supabase."
               : "Visitors don't see write buttons. Pasting the password here unlocks them on this device."}
           </p>
 
-          <input
-            type="password"
-            value={draft}
-            onChange={(e) => {
-              setDraft(e.target.value)
-              if (state !== 'idle') setState('idle')
-            }}
-            onKeyDown={onKeyDown}
-            placeholder={isOwner ? 'Paste a new password to replace the stored one' : 'Owner password'}
-            aria-label="Owner password"
-            autoComplete="off"
-            spellCheck={false}
-            style={{
-              width: '100%',
-              boxSizing: 'border-box',
-              fontSize: type.body.fontSize,
-              padding: '13px 15px',
-              borderRadius: radius.input,
-              border: `1px solid ${colors.border.DEFAULT}`,
-              background: colors.surface.DEFAULT,
-              color: colors.ink.primary,
-              marginBottom: 12,
-            }}
-          />
+          {!isOwner && (
+            <input
+              type="password"
+              value={draft}
+              onChange={(e) => {
+                setDraft(e.target.value)
+                if (state !== 'idle') setState('idle')
+              }}
+              onKeyDown={onKeyDown}
+              placeholder="Owner password"
+              aria-label="Owner password"
+              autoComplete="off"
+              spellCheck={false}
+              style={{
+                width: '100%',
+                boxSizing: 'border-box',
+                fontSize: type.body.fontSize,
+                padding: '13px 15px',
+                borderRadius: radius.input,
+                border: `1px solid ${colors.border.DEFAULT}`,
+                background: colors.surface.DEFAULT,
+                color: colors.ink.primary,
+                marginBottom: 12,
+              }}
+            />
+          )}
 
-          {state === 'wrong' && (
+          {!isOwner && state === 'wrong' && (
             <div
               role="alert"
               style={{
@@ -193,7 +195,7 @@ export function Owner() {
               Wrong password — nothing saved.
             </div>
           )}
-          {state === 'error' && (
+          {!isOwner && state === 'error' && (
             <div
               role="alert"
               style={{
@@ -208,24 +210,26 @@ export function Owner() {
           )}
 
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            <button
-              type="button"
-              onClick={onSave}
-              disabled={state === 'checking' || !draft.trim()}
-              style={{
-                border: 'none',
-                cursor: state === 'checking' || !draft.trim() ? 'not-allowed' : 'pointer',
-                background: colors.brand.DEFAULT,
-                color: colors.onBrand.fg,
-                fontWeight: type.weight.semibold,
-                fontSize: 14,
-                padding: '11px 22px',
-                borderRadius: radius.pill,
-                opacity: state === 'checking' || !draft.trim() ? 0.6 : 1,
-              }}
-            >
-              {state === 'checking' ? 'Checking…' : isOwner ? 'Replace stored password' : 'Unlock this device'}
-            </button>
+            {!isOwner && (
+              <button
+                type="button"
+                onClick={onSave}
+                disabled={state === 'checking' || !draft.trim()}
+                style={{
+                  border: 'none',
+                  cursor: state === 'checking' || !draft.trim() ? 'not-allowed' : 'pointer',
+                  background: colors.brand.DEFAULT,
+                  color: colors.onBrand.fg,
+                  fontWeight: type.weight.semibold,
+                  fontSize: 14,
+                  padding: '11px 22px',
+                  borderRadius: radius.pill,
+                  opacity: state === 'checking' || !draft.trim() ? 0.6 : 1,
+                }}
+              >
+                {state === 'checking' ? 'Checking…' : 'Unlock this device'}
+              </button>
+            )}
             {stored && (
               <button
                 type="button"
