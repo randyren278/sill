@@ -6,6 +6,8 @@ import { LIGHT_OPTIONS, SIZE_OPTIONS, SPECIES } from '../lib/species'
 import { PlantSprite } from '../components/PlantSprite'
 import { Select } from '../components/Select'
 import { DatePicker } from '../components/DatePicker'
+import { useToast } from '../components/Toast'
+import { surfaceWriteError } from '../lib/writeErrors'
 import { button, colors, radius, type } from '../lib/tokens'
 import type { Plant, SizeKey } from '../data/types'
 
@@ -17,12 +19,11 @@ type FormState = {
   freq: number
   size: SizeKey
   lastWatered: string
-  notes: string
 }
 
 function freshForm(): FormState {
   const sp = SPECIES[0]
-  return { name: '', loc: '', speciesIdx: 0, light: sp.light, freq: sp.freq, size: sp.size, lastWatered: TODAY, notes: '' }
+  return { name: '', loc: '', speciesIdx: 0, light: sp.light, freq: sp.freq, size: sp.size, lastWatered: TODAY }
 }
 
 function formFromPlant(p: Plant): FormState {
@@ -36,7 +37,6 @@ function formFromPlant(p: Plant): FormState {
     freq: p.freqDays,
     size: p.size,
     lastWatered: p.lastWatered,
-    notes: p.notes,
   }
 }
 
@@ -44,6 +44,7 @@ export function PlantForm({ mode }: { mode: 'new' | 'edit' }) {
   const { id } = useParams<{ id: string }>()
   const { plants, upsert, loading } = usePlants()
   const navigate = useNavigate()
+  const toast = useToast()
 
   const editing = mode === 'edit' ? plants.find((p) => p.id === id) ?? null : null
 
@@ -58,6 +59,7 @@ export function PlantForm({ mode }: { mode: 'new' | 'edit' }) {
       editing={editing}
       upsert={upsert}
       navigate={navigate}
+      toast={toast}
     />
   )
 }
@@ -67,9 +69,10 @@ type FormInnerProps = {
   editing: Plant | null
   upsert: (plant: Plant) => Promise<void>
   navigate: (to: string) => void
+  toast: ReturnType<typeof useToast>
 }
 
-function PlantFormInner({ mode, editing, upsert, navigate }: FormInnerProps) {
+function PlantFormInner({ mode, editing, upsert, navigate, toast }: FormInnerProps) {
   const [form, setForm] = useState<FormState>(() =>
     mode === 'edit' && editing ? formFromPlant(editing) : freshForm(),
   )
@@ -112,10 +115,16 @@ function PlantFormInner({ mode, editing, upsert, navigate }: FormInnerProps) {
         greens: sp.greens,
         size: form.size,
         fact: speciesChanged ? sp.fact : editing.fact,
-        notes: form.notes,
+        // Notes UI removed — preserve whatever was on the row.
+        notes: editing.notes ?? '',
         lastWatered: form.lastWatered,
       }
-      await upsert(updated)
+      try {
+        await upsert(updated)
+      } catch (err) {
+        surfaceWriteError(err, toast)
+        return
+      }
       navigate('/plants/' + updated.id)
     } else {
       const created: Plant = {
@@ -130,11 +139,16 @@ function PlantFormInner({ mode, editing, upsert, navigate }: FormInnerProps) {
         greens: sp.greens,
         size: form.size,
         fact: sp.fact,
-        notes: form.notes,
+        notes: '',
         lastWatered: form.lastWatered,
         history: [{ date: form.lastWatered }],
       }
-      await upsert(created)
+      try {
+        await upsert(created)
+      } catch (err) {
+        surfaceWriteError(err, toast)
+        return
+      }
       navigate('/')
     }
   }
@@ -279,20 +293,6 @@ function PlantFormInner({ mode, editing, upsert, navigate }: FormInnerProps) {
               style={{ width: '100%' }}
             />
           </div>
-          <Field label="Notes (optional)">
-            <textarea
-              value={form.notes}
-              onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-              placeholder="Light quirks, repotting dates, anything worth remembering…"
-              rows={3}
-              style={{
-                ...inputStyle,
-                resize: 'vertical',
-                minHeight: 80,
-                lineHeight: 1.5,
-              }}
-            />
-          </Field>
           <div className="pf-actions" style={{ display: 'flex', gap: 10, marginTop: 6 }}>
             <button
               type="button"

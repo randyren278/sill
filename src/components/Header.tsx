@@ -1,10 +1,12 @@
 import { useLocation, useNavigate } from 'react-router-dom'
 import { PlantSprite } from './PlantSprite'
+import { useIsOwner } from '../lib/owner'
 import { button, colors, radius, type } from '../lib/tokens'
 
 export function Header() {
   const location = useLocation()
   const navigate = useNavigate()
+  const isOwner = useIsOwner()
 
   // The dashboard and detail screens both belong to the "Plants" tab.
   const onPlants = location.pathname === '/' || location.pathname.startsWith('/plants')
@@ -108,28 +110,48 @@ export function Header() {
         >
           <MailIcon />
         </button>
-        <button
-          type="button"
-          onClick={() => navigate('/plants/new')}
-          className="hdr-btn hov-tile"
-          style={{
-            border: 'none',
-            cursor: 'pointer',
-            fontSize: button.navCta.fontSize,
-            fontWeight: type.weight.semibold,
-            padding: button.navCta.paddingWithLeadingIcon,
-            borderRadius: radius.pill,
-            background: button.navCta.background,
-            color: button.navCta.color,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            transition: 'transform .25s',
-          }}
-        >
-          <span style={{ fontSize: 16, lineHeight: 1, marginTop: -1 }}>＋</span>
-          <span className="hdr-add-label">Add plant</span>
-        </button>
+        {isOwner && (
+          <span
+            aria-label="owner mode unlocked"
+            style={{
+              fontFamily: "ui-monospace, 'SF Mono', Menlo, monospace",
+              fontSize: 9.5,
+              letterSpacing: '.18em',
+              textTransform: 'uppercase',
+              padding: '4px 9px',
+              borderRadius: radius.pill,
+              border: `1px solid ${colors.brand.DEFAULT}`,
+              color: colors.brand.DEFAULT,
+              background: 'transparent',
+            }}
+          >
+            owner
+          </span>
+        )}
+        {isOwner && (
+          <button
+            type="button"
+            onClick={() => navigate('/plants/new')}
+            className="hdr-btn hov-tile"
+            style={{
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: button.navCta.fontSize,
+              fontWeight: type.weight.semibold,
+              padding: button.navCta.paddingWithLeadingIcon,
+              borderRadius: radius.pill,
+              background: button.navCta.background,
+              color: button.navCta.color,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              transition: 'transform .25s',
+            }}
+          >
+            <span style={{ fontSize: 16, lineHeight: 1, marginTop: -1 }}>＋</span>
+            <span className="hdr-add-label">Add plant</span>
+          </button>
+        )}
       </div>
     </header>
   )

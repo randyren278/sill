@@ -1,6 +1,7 @@
 import type { Plant, HistoryEntry, ArchKey, GreensKey, SizeKey } from './types'
 import type { PlantsRepo } from './repo'
 import { supabase } from './supabaseClient'
+import { getOwnerKey, OwnerKeyMissingError } from '../lib/owner'
 
 // Database row shape (snake_case, matches the SQL schema in README).
 type Row = {
@@ -86,14 +87,19 @@ export const supabasePlantsRepo: PlantsRepo = {
   },
 
   async upsert(plant) {
-    const { error } = await supabase
-      .from('plants')
-      .upsert(plantToRow(plant), { onConflict: 'id' })
+    const key = getOwnerKey()
+    if (!key) throw new OwnerKeyMissingError()
+    const { error } = await supabase.rpc('plant_upsert', {
+      p_key: key,
+      p_plant: plantToRow(plant),
+    })
     if (error) throw error
   },
 
   async remove(id) {
-    const { error } = await supabase.from('plants').delete().eq('id', id)
+    const key = getOwnerKey()
+    if (!key) throw new OwnerKeyMissingError()
+    const { error } = await supabase.rpc('plant_remove', { p_key: key, p_id: id })
     if (error) throw error
   },
 }

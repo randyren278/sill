@@ -7,15 +7,17 @@ import { NumberCountUp } from '../components/NumberCountUp'
 import { PlantSprite } from '../components/PlantSprite'
 import { StatusDot } from '../components/StatusDot'
 import { ConfirmDialog } from '../components/ConfirmDialog'
-import { NotesCard } from '../components/NotesCard'
 import { useToast } from '../components/Toast'
+import { useIsOwner } from '../lib/owner'
+import { surfaceWriteError } from '../lib/writeErrors'
 import { button, colors, radius, type } from '../lib/tokens'
 
 export function PlantDetail() {
   const { id } = useParams<{ id: string }>()
-  const { plants, water, restorePlants, remove, upsert } = usePlants()
+  const { plants, water, restorePlants, remove } = usePlants()
   const navigate = useNavigate()
   const toast = useToast()
+  const isOwner = useIsOwner()
   const [confirmOpen, setConfirmOpen] = useState(false)
 
   const plant = plants.find((p) => p.id === id)
@@ -25,14 +27,20 @@ export function PlantDetail() {
   if (!plant || !sel) return <Navigate to="/" replace />
 
   const onWater = async () => {
-    const result = await water(sel.id)
+    let result
+    try {
+      result = await water(sel.id)
+    } catch (err) {
+      surfaceWriteError(err, toast)
+      return
+    }
     if (!result) return
     const lateBit = result.daysLate > 0 ? ' (' + result.daysLate + 'd late)' : ''
     toast.show({
       message: 'Watered ' + sel.name + lateBit,
       actionLabel: 'Undo',
       onAction: () => {
-        restorePlants([result.before])
+        restorePlants([result.before]).catch((err) => surfaceWriteError(err, toast))
       },
     })
   }
@@ -107,6 +115,7 @@ export function PlantDetail() {
             </span>
             <span style={{ fontSize: 14, color: '#9bb98a', maxWidth: 96, lineHeight: 1.2 }}>{sel.bigSub}</span>
           </div>
+          {isOwner && (
           <div className="pd-hero-actions" style={{ display: 'flex', gap: 10, marginTop: 26 }}>
             <button
               type="button"
@@ -166,6 +175,7 @@ export function PlantDetail() {
               Delete
             </button>
           </div>
+          )}
         </div>
         <div
           className="pd-hero-sprite"
@@ -316,12 +326,6 @@ export function PlantDetail() {
               ))}
             </div>
           </div>
-          <NotesCard
-            plant={plant}
-            onSave={async (notes) => {
-              await upsert({ ...plant, notes })
-            }}
-          />
         </div>
       </div>
       <ConfirmDialog
@@ -333,7 +337,12 @@ export function PlantDetail() {
         onCancel={() => setConfirmOpen(false)}
         onConfirm={async () => {
           setConfirmOpen(false)
-          await remove(sel.id)
+          try {
+            await remove(sel.id)
+          } catch (err) {
+            surfaceWriteError(err, toast)
+            return
+          }
           navigate('/')
         }}
       />

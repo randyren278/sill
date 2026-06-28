@@ -6,6 +6,8 @@ import { MeterBar } from '../components/MeterBar'
 import { NumberCountUp } from '../components/NumberCountUp'
 import { PlantSprite } from '../components/PlantSprite'
 import { useToast } from '../components/Toast'
+import { useIsOwner } from '../lib/owner'
+import { surfaceWriteError } from '../lib/writeErrors'
 import { button, colors, radius, type } from '../lib/tokens'
 import type { Plant } from '../data/types'
 
@@ -24,6 +26,7 @@ type Filter = 'all' | 'thirsty'
 export function Dashboard() {
   const { plants, waterMany, restorePlants } = usePlants()
   const toast = useToast()
+  const isOwner = useIsOwner()
   const [filter, setFilter] = useState<Filter>('all')
 
   const derived = useMemo(
@@ -41,7 +44,13 @@ export function Dashboard() {
     const snapshots: Plant[] = dueIds
       .map((id) => plants.find((p) => p.id === id))
       .filter((p): p is Plant => !!p)
-    const results = await waterMany(dueIds)
+    let results
+    try {
+      results = await waterMany(dueIds)
+    } catch (err) {
+      surfaceWriteError(err, toast)
+      return
+    }
     const late = results.filter((r) => r.daysLate > 0).sort((a, b) => b.daysLate - a.daysLate)
     const onTime = results.length - late.length
     const lateBits = late.map((r) => r.daysLate + 'd late').join(', ')
@@ -54,7 +63,7 @@ export function Dashboard() {
       message,
       actionLabel: 'Undo',
       onAction: () => {
-        restorePlants(snapshots)
+        restorePlants(snapshots).catch((err) => surfaceWriteError(err, toast))
       },
     })
   }
@@ -96,7 +105,7 @@ export function Dashboard() {
         <FilterButton active={filter === 'thirsty'} onClick={() => setFilter('thirsty')}>
           Needs water
         </FilterButton>
-        {dueIds.length > 0 && (
+        {isOwner && dueIds.length > 0 && (
           <button
             type="button"
             onClick={handleWaterAll}
@@ -160,6 +169,7 @@ function PlantRow({ plant }: { plant: DerivedPlant }) {
     <div
       onClick={() => navigate('/plants/' + plant.id)}
       className="plant-row hov-row"
+      data-plant-id={plant.id}
       style={{
         display: 'flex',
         alignItems: 'center',
